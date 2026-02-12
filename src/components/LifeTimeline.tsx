@@ -4,7 +4,9 @@ import { GameEvent, CharacterState } from '../../shared/types'
 import EventCard from './EventCard'
 import StatusPanel from './StatusPanel'
 import TimeControls from './TimeControls'
-import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react'
+import FuturePreview from './FuturePreview'
+import CausalityChain from './CausalityChain'
+import { Play, Pause, SkipForward, RotateCcw, Eye, GitBranch } from 'lucide-react'
 
 const LifeTimeline: React.FC = () => {
   const { 
@@ -12,12 +14,15 @@ const LifeTimeline: React.FC = () => {
     events, 
     advanceTime, 
     makeDecision, 
-    isLoading 
+    isLoading,
+    currentProfile
   } = useLifeStore()
   
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [autoAdvance, setAutoAdvance] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [showCausality, setShowCausality] = useState(false)
 
   // 获取待处理的事件
   const pendingEvents = events.filter(event => !event.isCompleted)
@@ -131,8 +136,46 @@ const LifeTimeline: React.FC = () => {
           </div>
           
           <TimeControls onAdvance={handleAdvanceTime} isLoading={isLoading} />
+          
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            className={`p-2 rounded-full ${
+              showPreview 
+                ? 'bg-indigo-100 text-indigo-600' 
+                : 'bg-gray-100 text-gray-600'
+            } hover:opacity-80 transition-opacity`}
+            title="未来预览"
+          >
+            <Eye size={20} />
+          </button>
+          
+          <button
+            onClick={() => setShowCausality(!showCausality)}
+            className={`p-2 rounded-full ${
+              showCausality 
+                ? 'bg-indigo-100 text-indigo-600' 
+                : 'bg-gray-100 text-gray-600'
+            } hover:opacity-80 transition-opacity`}
+            title="因果链追溯"
+          >
+            <GitBranch size={20} />
+          </button>
         </div>
       </div>
+
+      {/* 未来预览面板 */}
+      {showPreview && currentProfile && (
+        <div className="mb-6">
+          <FuturePreview profileId={currentProfile.id} />
+        </div>
+      )}
+
+      {/* 因果链面板 */}
+      {showCausality && currentProfile && (
+        <div className="mb-6">
+          <CausalityChain profileId={currentProfile.id} />
+        </div>
+      )}
 
       {/* 事件时间轴 */}
       <div className="space-y-6">

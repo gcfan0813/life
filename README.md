@@ -56,51 +56,104 @@ npm run preview
 ### Python后端环境
 ```bash
 # 安装后端依赖
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
-# 启动后端API服务（统一使用simple_server.py）
-cd backend
-python simple_server.py
+# 启动后端API服务
+python backend/main.py
 
 # 或使用uvicorn启动
-uvicorn simple_server:app --host 0.0.0.0 --port 8001 --reload
+cd backend && uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 完整开发流程
 ```bash
-# 终端1：启动后端API服务
-cd backend && python simple_server.py
+# 终端1：启动后端API服务（端口8000）
+python backend/main.py
 
 # 终端2：启动前端开发服务器
 npm run dev
 
 # 访问应用
 # 前端：http://localhost:3002/
-# 后端API文档：http://localhost:8001/docs
+# 后端API文档：http://localhost:8000/docs
 ```
 
 ### 当前系统状态
 - ✅ **前端**：http://localhost:3002/ （实时重载）
-- ✅ **后端**：http://localhost:8001/ （简化版API）
+- ✅ **后端**：http://localhost:8000/ （完整版API - 集成核心引擎）
 - ✅ **数据库**：SQLite（自动创建和管理）
-- ✅ **功能**：角色创建、事件推演、状态管理
+- ✅ **功能**：角色创建、事件推演、状态管理、规则校验、AI推演
 
-### 后端API接口（端口8001）
+### 后端API接口（端口8000 - 完整版）
 
-#### 角色管理
-- `POST /api/profiles` - 创建新角色档案
+#### 角色管理（集成核心引擎）
+- `POST /api/profiles` - 创建新角色档案（使用CharacterInitializer）
 - `GET /api/profiles` - 获取所有角色列表
 
-#### 时间推进
-- `POST /api/profiles/{id}/advance` - 推进时间并生成新事件
+#### 时间推进（集成核心引擎）
+- `POST /api/profiles/{id}/advance` - 推进时间并生成事件（使用SimulationEngine）
 
-#### 事件处理
-- `GET /api/events/{profile_id}` - 获取角色事件列表
-- `POST /api/profiles/{id}/decisions` - 处理用户决策
+#### 事件处理（集成核心引擎）
+- `POST /api/profiles/{id}/decisions` - 处理用户决策（使用SimulationEngine）
+
+#### 高级功能
+- `GET /api/profiles/{id}/preview?days=90` - 未来预览（基于当前状态预测）
+- `GET /api/profiles/{id}/timeline` - 获取事件时间线
+- `GET /api/profiles/{id}/causality` - 获取完整因果链网络
+- `GET /api/profiles/{id}/causality/{event_id}` - 获取单个事件因果链
+- `GET /api/profiles/{id}/summary` - 人生总结（阶段评估、成就统计、人生感悟）
+
+#### 记忆系统
+- `GET /api/profiles/{id}/memories` - 获取记忆列表（艾宾浩斯留存率）
+- `GET /api/profiles/{id}/memories/stats` - 记忆统计
+- `POST /api/profiles/{id}/memories/{memory_id}/recall` - 回忆记忆（增强留存）
+
+#### 规则引擎
+- `GET /api/rules/stats` - 获取规则库统计信息
+- `GET /api/rules/categories` - 获取规则分类
+- `GET /api/rules/category/{id}` - 获取指定分类规则
+- `POST /api/rules/validate-event` - 验证事件合理性
+- `POST /api/rules/validate-decision` - 验证决策风险
+- `GET /api/rules/validate-action` - 验证动作合理性
+
+**500+学术规则分类：**
+- 生理系统规则（健康、精力、外貌）
+- 心理系统规则（大五人格、情绪）
+- 社会系统规则（职业、经济、社交）
+- 认知系统规则（知识、技能、记忆）
+- 关系系统规则（亲密度、家庭）
+- 年龄特定规则（童年、青年、中年、老年）
+
+#### AI服务
+- `GET /api/ai/status` - 获取AI服务状态和可用API
+- `POST /api/ai/level` - 设置AI推演级别（L0-L3）
+- `POST /api/ai/generate` - 使用AI生成事件
+
+**AI推演级别：**
+- L0: 本地规则引擎（免费）
+- L1: 模板生成（免费）
+- L2: 免费API（硅基流动等）
+- L3: 高级API（更智能）
 
 #### 系统信息
-- `GET /api/health` - 健康检查
+- `GET /api/health` - 健康检查（显示引擎状态）
 - `GET /api/data/exists` - 检查数据是否存在
+
+### 简化版API（端口8001 - 备用）
+
+保留作为降级方案，功能有限：
+- 随机事件生成，无规则校验
+- 无AI推演能力
+- 适合演示和测试
+
+### 启动问题已解决
+
+**2026-02-12更新：**
+- ✅ 修复了Python路径问题
+- ✅ 修复了shared.types导入问题
+- ✅ 创建了debug_main.py测试脚本
+- ✅ 所有核心模块导入成功
+- ✅ 可以使用start.bat启动服务
 
 #### 请求/响应格式
 ```typescript

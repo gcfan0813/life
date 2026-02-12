@@ -36,7 +36,7 @@ export interface MakeDecisionRequest {
 
 // API服务类
 export class APIService {
-  private baseURL: string = 'http://localhost:8001' // 使用简化版后端服务
+  private baseURL: string = 'http://localhost:8000' // 使用完整版后端服务（端口8000）
 
   // 通用请求方法
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<APIResponse<T>> {
@@ -156,6 +156,164 @@ export class APIService {
   // 健康检查
   async healthCheck(): Promise<APIResponse<{ status: string; version: string }>> {
     return this.request('/health')
+  }
+
+  // 未来预览
+  async previewFuture(profileId: string, days: number = 90): Promise<APIResponse<{
+    previewDays: number
+    currentAge: number
+    currentStage: string
+    currentDimensions: Record<string, number>
+    predictions: Array<{
+      type: string
+      title: string
+      description: string
+      probability: number
+      suggestion: string
+    }>
+    generatedAt: string
+  }>> {
+    return this.request(`/profiles/${profileId}/preview?days=${days}`)
+  }
+
+  // 获取时间线
+  async getTimeline(profileId: string, limit: number = 50): Promise<APIResponse<{
+    timeline: Array<{
+      type: string
+      id: string
+      date: string
+      title?: string
+      description?: string
+      summary?: string
+      isCompleted?: boolean
+      emotionalWeight: number
+      retention?: number
+    }>
+    total: number
+  }>> {
+    return this.request(`/profiles/${profileId}/timeline?limit=${limit}`)
+  }
+
+  // 获取单个事件的因果链
+  async getEventCausality(profileId: string, eventId: string): Promise<APIResponse<{
+    event: {
+      id: string
+      title: string
+      description: string
+      date: string
+      type: string
+      narrative: string
+      emotionalWeight: number
+    }
+    causes: Array<{
+      id: string
+      title: string
+      date: string
+      type: string
+      strength: number
+    }>
+    effects: Array<{
+      id: string
+      title: string
+      date: string
+      type: string
+      strength: number
+    }>
+    relatedMemories: Array<{
+      id: string
+      summary: string
+      emotionalWeight: number
+      retention: number
+    }>
+    impacts: Record<string, any>
+    decision: {
+      selected: number
+      choice: string
+    } | null
+    chain: {
+      length: number
+      complete: boolean
+    }
+  }>> {
+    return this.request(`/profiles/${profileId}/causality/${eventId}`)
+  }
+
+  // 获取完整因果链网络
+  async getFullCausalityChain(profileId: string): Promise<APIResponse<{
+    nodes: Array<{
+      id: string
+      title: string
+      date: string
+      type: string
+      isCompleted: boolean
+      emotionalWeight: number
+    }>
+    links: Array<{
+      source: string
+      target: string
+      type: string
+    }>
+    stats: {
+      totalEvents: number
+      typeDistribution: Record<string, number>
+      completedEvents: number
+      pendingEvents: number
+    }
+  }>> {
+    return this.request(`/profiles/${profileId}/causality`)
+  }
+
+  // 获取规则库统计
+  async getRulesStats(): Promise<APIResponse<{
+    totalRules: number
+    categories: Record<string, number>
+    status: string
+  }>> {
+    return this.request('/rules/stats')
+  }
+
+  // 验证事件合理性
+  async validateEvent(profileId: string, eventData: {
+    id: string
+    eventDate: string
+    eventType: string
+    title: string
+    description: string
+    narrative?: string
+    choices?: string[]
+    impacts?: Record<string, any>
+    isCompleted?: boolean
+    selectedChoice?: number
+    plausibility?: number
+    emotionalWeight?: number
+  }): Promise<APIResponse<{
+    plausibility: number
+    conflicts: string[]
+    warnings: string[]
+    suggestions: string[]
+    isValid: boolean
+    quality: string
+  }>> {
+    return this.request(`/rules/validate-event?profile_id=${profileId}`, {
+      method: 'POST',
+      body: JSON.stringify(eventData)
+    })
+  }
+
+  // 验证决策合理性
+  async validateDecision(profileId: string, decisionData: {
+    choiceIndex: number
+    eventType: string
+  }): Promise<APIResponse<{
+    plausibility: number
+    riskLevel: string
+    suggestions: string[]
+    isRecommended: boolean
+  }>> {
+    return this.request(`/rules/validate-decision?profile_id=${profileId}`, {
+      method: 'POST',
+      body: JSON.stringify(decisionData)
+    })
   }
 }
 
