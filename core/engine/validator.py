@@ -196,17 +196,20 @@ class RuleValidator:
             suggestions=suggestions
         )
     
-    def _check_era_compatibility(self, event: GameEvent, era_rules: EraRules) -> float:
+    def _check_era_compatibility(self, event: GameEvent, era_rules) -> float:
         """检查时代合规性"""
-        era = era_rules.era
+        try:
+            era = era_rules.get('era', '') if isinstance(era_rules, dict) else era_rules.era
+        except:
+            era = '现代'
         
         # 简化实现：检查事件类型是否与时代匹配
-        if era.startswith('19'):
+        if '19' in era or '古代' in era:
             # 19世纪事件限制
             if '互联网' in event.title or '智能手机' in event.description:
                 return 0.1
             return 0.9
-        elif era.startswith('20'):
+        elif '20' in era:
             # 20世纪事件限制  
             if '人工智能' in event.title and '2020' not in era:
                 return 0.3
@@ -221,7 +224,12 @@ class RuleValidator:
         
         # 检查职业相关性
         try:
-            career_level = state.dimensions.get('social', {}).get('career', {}).get('level', 0)
+            career_level = 0
+            if 'social' in state.dimensions:
+                social_dim = state.dimensions['social']
+                if 'career' in social_dim and isinstance(social_dim['career'], dict):
+                    career_level = social_dim['career'].get('level', 0)
+            
             if career_level < 30 and '高级' in event.title:
                 score *= 0.3
             elif career_level > 70 and '初级' in event.title:
@@ -244,7 +252,11 @@ class RuleValidator:
         
         try:
             # 检查事件情感连续性
-            emotional_state = state.dimensions.get('psychological', {}).get('happiness', 50)
+            emotional_state = 50
+            if 'psychological' in state.dimensions:
+                psych_dim = state.dimensions['psychological']
+                if 'happiness' in psych_dim:
+                    emotional_state = psych_dim['happiness']
             
             if event.emotional_weight > 0.7 and emotional_state > 50:
                 # 高情绪事件出现在积极情绪状态下
@@ -257,14 +269,21 @@ class RuleValidator:
         except:
             return 0.7
     
-    def _check_macro_influence(self, event: GameEvent, era_rules: EraRules) -> float:
+    def _check_macro_influence(self, event: GameEvent, era_rules) -> float:
         """检查宏观事件影响"""
         # 简化实现：检查事件是否与历史大事相关
-        historical_events = era_rules.historicalEvents
-        
         try:
+            if isinstance(era_rules, dict):
+                historical_events = era_rules.get('historicalEvents', [])
+            else:
+                historical_events = era_rules.historicalEvents
+            
             for he in historical_events:
-                event_name = he.get('event', '')
+                if isinstance(he, dict):
+                    event_name = he.get('event', '')
+                else:
+                    event_name = str(he)
+                
                 if event_name and (event_name in event.description or event_name in event.title):
                     return 1.0  # 与历史事件相关，加分
             

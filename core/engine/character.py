@@ -278,11 +278,15 @@ class CharacterInitializer:
                             for nested_key, nested_value in value.items():
                                 if sub_dimension in dimensions[dimension]:
                                     if nested_key in dimensions[dimension][sub_dimension]:
-                                        dimensions[dimension][sub_dimension][nested_key] += nested_value
+                                        # 确保目标值是数值类型
+                                        if isinstance(dimensions[dimension][sub_dimension][nested_key], (int, float)):
+                                            dimensions[dimension][sub_dimension][nested_key] += nested_value
                         else:
                             # 直接属性
                             if sub_dimension in dimensions[dimension]:
-                                dimensions[dimension][sub_dimension] += value
+                                # 确保目标值是数值类型
+                                if isinstance(dimensions[dimension][sub_dimension], (int, float)):
+                                    dimensions[dimension][sub_dimension] += value
     
     def _determine_life_stage(self, age: float) -> str:
         """确定人生阶段"""

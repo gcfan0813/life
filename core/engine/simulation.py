@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.ai.generator import ai_generator, AIReasoningResult
+from core.ai.simple_generator import simple_ai_generator, AIReasoningResult
 from core.engine.validator import rule_validator, RuleValidationResult
 from core.storage.database import db_manager
 
@@ -81,7 +81,7 @@ class SimulationEngine:
     """核心模拟引擎"""
     
     def __init__(self):
-        self.ai_generator = ai_generator
+        self.ai_generator = simple_ai_generator
         self.rule_validator = rule_validator
         self.db_manager = db_manager
         
@@ -171,15 +171,29 @@ class SimulationEngine:
         
         if state.age < 18:
             return 'L0'  # 青少年使用模板
-        elif state.dimensions.get('social', {}).get('career', {}).get('level', 0) > 70:
-            return 'L2'  # 高职业等级使用API
-        else:
-            return 'L1'  # 默认使用本地模型
+        
+        # 安全访问维度数据
+        try:
+            career_level = 0
+            if 'social' in state.dimensions:
+                social_dim = state.dimensions['social']
+                if 'career' in social_dim and isinstance(social_dim['career'], dict):
+                    career_level = social_dim['career'].get('level', 0)
+            
+            if career_level > 70:
+                return 'L2'  # 高职业等级使用API
+            else:
+                return 'L1'  # 默认使用本地模型
+        except:
+            return 'L1'  # 出错时使用默认级别
     
     def _get_era_rules(self, state: CharacterState) -> Dict[str, Any]:
         """获取时代规则"""
         # 简化实现：根据出生年份确定时代
-        birth_year = int(state.current_date.split('-')[0]) - state.age
+        try:
+            birth_year = int(state.current_date.split('-')[0]) - int(state.age)
+        except:
+            birth_year = 2000  # 默认年份
         
         if birth_year < 1900:
             return {'era': '19世纪', 'historicalEvents': ['工业革命', '辛亥革命']}
@@ -211,10 +225,15 @@ class SimulationEngine:
         for event in events:
             impacts = self.rule_validator.calculate_impacts(event, current_state)
             for key, change in impacts.items():
-                dimension, sub_dimension = key.split('.')
-                if dimension in new_state.dimensions:
-                    if sub_dimension in new_state.dimensions[dimension]:
-                        new_state.dimensions[dimension][sub_dimension] += change
+                # 安全分割维度键，只取前两部分
+                parts = key.split('.')
+                if len(parts) >= 2:
+                    dimension = parts[0]
+                    sub_dimension = parts[1]
+                    
+                    if dimension in new_state.dimensions:
+                        if sub_dimension in new_state.dimensions[dimension]:
+                            new_state.dimensions[dimension][sub_dimension] += change
         
         # 确保数值在合理范围内
         self._normalize_dimensions(new_state.dimensions)
@@ -316,10 +335,15 @@ class SimulationEngine:
         )
         
         for key, change in effects.items():
-            dimension, sub_dimension = key.split('.')
-            if dimension in new_state.dimensions:
-                if sub_dimension in new_state.dimensions[dimension]:
-                    new_state.dimensions[dimension][sub_dimension] += change
+            # 安全分割维度键，只取前两部分
+            parts = key.split('.')
+            if len(parts) >= 2:
+                dimension = parts[0]
+                sub_dimension = parts[1]
+                
+                if dimension in new_state.dimensions:
+                    if sub_dimension in new_state.dimensions[dimension]:
+                        new_state.dimensions[dimension][sub_dimension] += change
         
         self._normalize_dimensions(new_state.dimensions)
         return new_state
