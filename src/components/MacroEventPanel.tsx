@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { apiService } from '../services/api'
-import { AlertTriangle, Globe, TrendingDown, Virus, FileText, Cpu, CloudLightning } from 'lucide-react'
+import { AlertTriangle, Globe, TrendingDown, FileText, Cpu, CloudLightning } from 'lucide-react'
+// 由于lucide-react版本较旧，使用AlertTriangle代替Virus图标
+const Virus = AlertTriangle
 
 interface MacroEvent {
   id: string
@@ -59,7 +61,7 @@ const MacroEventPanel: React.FC<{ profileId: string; currentYear: number }> = ({
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'economic': return <TrendingDown className="w-5 h-5 text-red-500" />
-      case 'pandemic': return <Virus className="w-5 h-5 text-orange-500" />
+      case 'pandemic': return <AlertTriangle className="w-5 h-5 text-orange-500" />
       case 'policy': return <FileText className="w-5 h-5 text-blue-500" />
       case 'technology': return <Cpu className="w-5 h-5 text-purple-500" />
       case 'natural_disaster': return <CloudLightning className="w-5 h-5 text-yellow-500" />

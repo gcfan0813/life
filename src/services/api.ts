@@ -36,7 +36,7 @@ export interface MakeDecisionRequest {
 
 // API服务类
 export class APIService {
-  private baseURL: string = 'http://localhost:8000' // 使用完整版后端服务（端口8000）
+  private baseURL: string = 'http://localhost:8000/api' // 使用完整版后端服务（端口8000）
 
   // 通用请求方法
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<APIResponse<T>> {

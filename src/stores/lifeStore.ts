@@ -43,7 +43,7 @@ export const useLifeStore = create<LifeStore>()(
       memories: [],
       isInitialized: false,
       isLoading: false,
-      currentDate: new Date().toISOString().split('T')[0],
+      currentDate: "1993-06-14",  // 初始化为数据库中的起始日期
       
       // AI设置
       aiSettings: {
@@ -58,36 +58,58 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
+          console.log('开始初始化无限人生系统...')
+          
           // 尝试API健康检查
           const healthCheck = await apiService.healthCheck()
+          console.log('API健康检查:', healthCheck.success ? '成功' : '失败')
           
           if (healthCheck.success) {
+            console.log('使用API服务初始化')
             // 使用API服务
             const dataCheck = await apiService.checkExistingData()
             
             if (dataCheck.success && dataCheck.data?.hasData) {
               const profilesResult = await apiService.getProfiles()
               if (profilesResult.success && profilesResult.data && profilesResult.data.length > 0) {
+                console.log('加载现有档案:', profilesResult.data[0].id)
                 await get().loadGame(profilesResult.data[0].id)
+              } else {
+                console.log('没有找到现有档案')
               }
+            } else {
+              console.log('API服务无数据，尝试本地服务')
+              throw new Error('API无数据')
             }
           } else {
+            console.log('API健康检查失败，回退到本地服务')
+            throw new Error('API不可用')
+          }
+          
+          set({ isInitialized: true, isLoading: false })
+          console.log('系统初始化完成')
+        } catch (error) {
+          console.warn('API初始化失败，回退到本地服务:', error)
+          
+          try {
             // 回退到本地服务
             const hasData = await localService.checkExistingData()
+            console.log('本地服务数据检查:', hasData.hasData ? '有数据' : '无数据')
             
             if (hasData.hasData) {
               const profiles = await localService.getProfiles()
               if (profiles.length > 0) {
+                console.log('加载本地档案:', profiles[0].id)
                 await get().loadGame(profiles[0].id)
               }
             }
+          } catch (localError) {
+            console.warn('本地服务也失败:', localError)
           }
           
+          // 无论成功失败都标记为已初始化，允许用户继续操作
           set({ isInitialized: true, isLoading: false })
-        } catch (error) {
-          console.error('初始化失败:', error)
-          // 初始化失败但标记为已初始化，允许用户继续操作
-          set({ isInitialized: true, isLoading: false })
+          console.log('系统初始化完成（使用本地模式）')
         }
       },
       

@@ -208,16 +208,29 @@ async def advance_time(profile_id: str, request: AdvanceTimeRequest):
     """推进时间（集成核心引擎）"""
     try:
         # 加载当前状态
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
             return APIResponse(success=False, error="角色不存在")
+        
+        state, event_offset, snapshot_date = snapshot
         
         # 使用核心引擎推进时间
         result = await simulation_engine.advance_time(
             profile_id,
-            game_state.state,
+            state,
             request.days
         )
+        
+        # 保存新状态
+        db_manager.save_snapshot(profile_id, result.new_date, result.new_state, event_offset + len(result.new_events))
+        
+        # 保存新事件
+        for event in result.new_events:
+            db_manager.save_event(profile_id, event)
+        
+        # 保存新记忆
+        for memory in result.new_memories:
+            db_manager.save_memory(profile_id, memory)
         
         # 转换结果
         api_result = {
@@ -243,17 +256,26 @@ async def make_decision(profile_id: str, request: MakeDecisionRequest):
     """处理决策（集成核心引擎）"""
     try:
         # 加载当前状态
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
             return APIResponse(success=False, error="角色不存在")
+        
+        state, event_offset, snapshot_date = snapshot
         
         # 使用核心引擎处理决策
         result = await simulation_engine.process_decision(
             profile_id,
-            game_state.state,
+            state,
             request.eventId,
             request.choiceIndex
         )
+        
+        # 保存新状态
+        db_manager.save_snapshot(profile_id, snapshot_date, result.new_state, event_offset)
+        
+        # 保存新记忆
+        for memory in result.new_memories:
+            db_manager.save_memory(profile_id, memory)
         
         # 转换结果
         api_result = {
@@ -334,10 +356,33 @@ async def validate_event(profile_id: str, event_data: dict):
         if not validator:
             return APIResponse(success=False, error="规则引擎未初始化")
         
-        # 加载角色状态
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
+        
+        # 加载角色状态（简化版本）
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            # 如果没有快照，创建一个默认状态用于验证
+            from core.engine.character import CharacterState
+            state = CharacterState(
+                id=profile_id,
+                profile_id=profile_id,
+                current_date="1993-06-14",
+                age=18,
+                dimensions={"health": 70, "energy": 80, "wealth": 50},
+                location="北京",
+                occupation="学生",
+                education="高中",
+                life_stage="青年",
+                total_events=0,
+                total_decisions=0,
+                days_survived=0
+            )
+        else:
+            state, _, _ = snapshot
         
         # 创建GameEvent对象
         event = GameEvent(
@@ -389,10 +434,18 @@ async def validate_decision(profile_id: str, decision_data: dict):
         if not validator:
             return APIResponse(success=False, error="规则引擎未初始化")
         
-        # 加载角色状态
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
+        
+        # 加载角色状态（简化版本）
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            state = None
+        else:
+            state, _, _ = snapshot
         
         choice_index = decision_data.get("choiceIndex", 0)
         event_type = decision_data.get("eventType", "general")
@@ -506,9 +559,18 @@ async def generate_events_ai(profile_id: str, num_events: int = 3, level: str = 
                 message="使用本地规则引擎"
             )
         
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
+        
+        # 加载角色状态
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            return APIResponse(success=False, error="角色状态不存在")
+        
+        state, _, _ = snapshot
         
         force_level = None
         if level != "auto":
@@ -611,11 +673,18 @@ async def get_category_rules(category_id: str):
 async def validate_action(profile_id: str, action: str, action_type: str):
     """验证动作的合理性"""
     try:
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
         
-        state = game_state.state
+        # 加载角色状态
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            return APIResponse(success=False, error="角色状态不存在")
+        
+        state, _, _ = snapshot
         age = state.age
         
         # 基于规则库验证
@@ -685,6 +754,12 @@ except ImportError as e:
 async def get_memories(profile_id: str, memory_type: str = "all"):
     """获取角色记忆列表"""
     try:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
+            return APIResponse(success=False, error="角色不存在")
+        
         if not MEMORY_SYSTEM_AVAILABLE:
             # 回退到数据库直接获取
             memories = db_manager.get_memories(profile_id, limit=100)
@@ -841,9 +916,18 @@ async def get_memory_stats(profile_id: str):
 async def preview_future(profile_id: str, days: int = 90):
     """未来预览 - 基于当前状态预测未来事件"""
     try:
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
+        
+        # 加载角色状态
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            return APIResponse(success=False, error="角色状态不存在")
+        
+        state, _, _ = snapshot
         
         state = game_state.state
         current_dimensions = state.dimensions
@@ -954,9 +1038,11 @@ async def get_life_summary(profile_id: str):
             return APIResponse(success=False, error="角色不存在")
         
         # 获取状态
-        game_state = db_manager.load_game_state(profile_id)
-        if not game_state:
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
             return APIResponse(success=False, error="角色状态不存在")
+        
+        state, _, _ = snapshot
         
         state = game_state.state
         
@@ -1047,6 +1133,12 @@ async def get_life_summary(profile_id: str):
 async def get_timeline(profile_id: str, limit: int = 50):
     """获取角色事件时间线"""
     try:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
+            return APIResponse(success=False, error="角色不存在")
+        
         events = db_manager.get_events(profile_id, limit=limit)
         memories = db_manager.get_memories(profile_id, limit=limit)
         
@@ -1300,20 +1392,18 @@ async def get_macro_event_types():
 async def check_profile_macro_events(profile_id: str, year: int):
     """检查角色在指定年份的宏观事件影响"""
     try:
-        profile = db_manager.get_profile(profile_id)
-        if not profile:
+        # 检查档案是否存在
+        profiles = db_manager.get_profiles()
+        profile_exists = any(p.id == profile_id for p in profiles)
+        if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
         
         # 获取角色状态
-        state_data = profile.state or {}
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            return APIResponse(success=False, error="角色状态不存在")
         
-        # 创建临时状态对象
-        class TempState:
-            def __init__(self, data):
-                self.age = data.get("age", 0)
-                self.dimensions = data.get("dimensions", {})
-        
-        state = TempState(state_data)
+        state, _, _ = snapshot
         
         # 检查宏观事件
         triggered_events = macro_event_system.check_macro_events(year, state)
