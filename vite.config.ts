@@ -23,13 +23,11 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          ai: ['@core/ai', '@shared/ai'],
-          rules: ['@core/engine', '@shared/rules'],
         },
       },
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', '@core/ai', '@shared/ai'],
+    include: ['react', 'react-dom'],
   },
 })

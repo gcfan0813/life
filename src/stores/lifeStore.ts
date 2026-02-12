@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { LifeProfile, CharacterState, GameEvent, Memory } from '../../shared/types'
+import { apiService, localService } from '../services'
 
 interface LifeStore {
   // 当前状态
@@ -57,21 +58,35 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
-          // 检查本地存储
-          const db = await import('@core/storage/database')
-          const hasData = await db.checkExistingData()
+          // 尝试API健康检查
+          const healthCheck = await apiService.healthCheck()
           
-          if (hasData) {
-            // 加载最新存档
-            const profiles = await db.getProfiles()
-            if (profiles.length > 0) {
-              await get().loadGame(profiles[0].id)
+          if (healthCheck.success) {
+            // 使用API服务
+            const dataCheck = await apiService.checkExistingData()
+            
+            if (dataCheck.success && dataCheck.data?.hasData) {
+              const profilesResult = await apiService.getProfiles()
+              if (profilesResult.success && profilesResult.data && profilesResult.data.length > 0) {
+                await get().loadGame(profilesResult.data[0].id)
+              }
+            }
+          } else {
+            // 回退到本地服务
+            const hasData = await localService.checkExistingData()
+            
+            if (hasData.hasData) {
+              const profiles = await localService.getProfiles()
+              if (profiles.length > 0) {
+                await get().loadGame(profiles[0].id)
+              }
             }
           }
           
           set({ isInitialized: true, isLoading: false })
         } catch (error) {
           console.error('初始化失败:', error)
+          // 初始化失败但标记为已初始化，允许用户继续操作
           set({ isInitialized: true, isLoading: false })
         }
       },
@@ -81,24 +96,62 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
-          const db = await import('@core/storage/database')
-          const engine = await import('@core/engine/character')
+          // 尝试使用API服务
+          const result = await apiService.createProfile(profileData)
           
-          // 创建新档案
-          const profile = await db.createProfile(profileData)
-          
-          // 初始化角色状态
-          const initialState = await engine.initializeCharacterState(profile)
-          await db.saveState(profile.id, initialState)
-          
-          set({
-            currentProfile: profile,
-            currentState: initialState,
-            events: [],
-            memories: [],
-            currentDate: profile.birthDate,
-            isLoading: false,
-          })
+          if (result.success && result.data) {
+            const profile = result.data
+            
+            // 初始化角色状态
+            const initialState: CharacterState = {
+              id: `state_${profile.id}`,
+              profileId: profile.id,
+              currentDate: profile.birthDate,
+              age: 0,
+              dimensions: {
+                physical: { health: 80, energy: 70, appearance: 60 },
+                psychological: { 
+                  openness: profile.initialPersonality.openness,
+                  conscientiousness: profile.initialPersonality.conscientiousness,
+                  extraversion: profile.initialPersonality.extraversion,
+                  agreeableness: profile.initialPersonality.agreeableness,
+                  neuroticism: profile.initialPersonality.neuroticism
+                },
+                social: { socialCapital: 50, career: { level: 0, title: '无' }, economic: 0 },
+                cognitive: { knowledge: 40, skills: 30, memory: 70 },
+                relational: { intimacy: 0, network: 0 }
+              },
+              location: profile.birthLocation,
+              occupation: '无',
+              education: '无',
+              lifeStage: 'childhood',
+              totalEvents: 0,
+              totalDecisions: 0,
+              daysSurvived: 0
+            }
+            
+            set({
+              currentProfile: profile,
+              currentState: initialState,
+              events: [],
+              memories: [],
+              currentDate: profile.birthDate,
+              isLoading: false,
+            })
+          } else {
+            // 回退到本地服务
+            const profile = await localService.createProfile(profileData)
+            const initialState = await localService.loadGame(profile.id)
+            
+            set({
+              currentProfile: profile,
+              currentState: initialState.state,
+              events: initialState.events,
+              memories: initialState.memories,
+              currentDate: initialState.state.currentDate,
+              isLoading: false,
+            })
+          }
         } catch (error) {
           console.error('创建档案失败:', error)
           set({ isLoading: false })
@@ -113,20 +166,33 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
-          const engine = await import('@core/engine/simulation')
-          const db = await import('@core/storage/database')
-          
-          // 执行时间推进
-          const result = await engine.advanceTime(currentProfile.id, currentState, days)
-          
-          // 更新状态
-          set({
-            currentState: result.newState,
-            events: [...get().events, ...result.newEvents],
-            memories: [...get().memories, ...result.newMemories],
-            currentDate: result.newDate,
-            isLoading: false,
+          // 尝试使用API服务
+          const result = await apiService.advanceTime({
+            profileId: currentProfile.id,
+            days
           })
+          
+          if (result.success && result.data) {
+            // 更新状态
+            set({
+              currentState: result.data.newState,
+              events: [...get().events, ...result.data.newEvents],
+              memories: [...get().memories, ...result.data.newMemories],
+              currentDate: result.data.newDate,
+              isLoading: false,
+            })
+          } else {
+            // 回退到本地服务
+            const localResult = await localService.advanceTime(currentProfile.id, days)
+            
+            set({
+              currentState: localResult.newState,
+              events: [...get().events, ...localResult.newEvents],
+              memories: [...get().memories, ...localResult.newMemories],
+              currentDate: localResult.newDate,
+              isLoading: false,
+            })
+          }
           
           // 自动保存
           await get().saveGame()
@@ -144,30 +210,45 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
-          const engine = await import('@core/engine/simulation')
-          const db = await import('@core/storage/database')
-          
-          // 处理决策
-          const result = await engine.processDecision(
-            currentProfile.id,
-            currentState,
+          // 尝试使用API服务
+          const result = await apiService.makeDecision({
+            profileId: currentProfile.id,
             eventId,
             choiceIndex
-          )
-          
-          // 更新事件状态
-          const updatedEvents = events.map(event => 
-            event.id === eventId 
-              ? { ...event, isCompleted: true, selectedChoice: choiceIndex }
-              : event
-          )
-          
-          set({
-            currentState: result.newState,
-            events: updatedEvents,
-            memories: [...get().memories, ...result.newMemories],
-            isLoading: false,
           })
+          
+          if (result.success && result.data) {
+            // 更新事件状态
+            const updatedEvents = events.map(event => 
+              event.id === eventId 
+                ? { ...event, isCompleted: true, selectedChoice: choiceIndex }
+                : event
+            )
+            
+            set({
+              currentState: result.data.newState,
+              events: updatedEvents,
+              memories: [...get().memories, ...result.data.newMemories],
+              isLoading: false,
+            })
+          } else {
+            // 回退到本地服务
+            const localResult = await localService.makeDecision(currentProfile.id, eventId, choiceIndex)
+            
+            // 更新事件状态
+            const updatedEvents = events.map(event => 
+              event.id === eventId 
+                ? { ...event, isCompleted: true, selectedChoice: choiceIndex }
+                : event
+            )
+            
+            set({
+              currentState: localResult.newState,
+              events: updatedEvents,
+              memories: [...get().memories, ...localResult.newMemories],
+              isLoading: false,
+            })
+          }
           
           // 自动保存
           await get().saveGame()
@@ -183,13 +264,13 @@ export const useLifeStore = create<LifeStore>()(
         if (!currentProfile || !currentState) return
         
         try {
-          const db = await import('@core/storage/database')
-          await db.saveGameState(currentProfile.id, {
-            state: currentState,
-            events,
-            memories,
-            lastSaved: new Date().toISOString(),
-          })
+          // 尝试使用API服务
+          const result = await apiService.saveGame(currentProfile.id)
+          
+          if (!result.success) {
+            // 回退到本地服务
+            await localService.saveGame(currentProfile.id)
+          }
         } catch (error) {
           console.error('保存游戏失败:', error)
         }
@@ -200,17 +281,31 @@ export const useLifeStore = create<LifeStore>()(
         set({ isLoading: true })
         
         try {
-          const db = await import('@core/storage/database')
-          const gameState = await db.loadGameState(profileId)
+          // 尝试使用API服务
+          const result = await apiService.loadGame(profileId)
           
-          set({
-            currentProfile: gameState.profile,
-            currentState: gameState.state,
-            events: gameState.events,
-            memories: gameState.memories,
-            currentDate: gameState.state.currentDate,
-            isLoading: false,
-          })
+          if (result.success && result.data) {
+            set({
+              currentProfile: result.data.profile,
+              currentState: result.data.state,
+              events: result.data.events,
+              memories: result.data.memories,
+              currentDate: result.data.state.currentDate,
+              isLoading: false,
+            })
+          } else {
+            // 回退到本地服务
+            const gameState = await localService.loadGame(profileId)
+            
+            set({
+              currentProfile: gameState.profile,
+              currentState: gameState.state,
+              events: gameState.events,
+              memories: gameState.memories,
+              currentDate: gameState.state.currentDate,
+              isLoading: false,
+            })
+          }
         } catch (error) {
           console.error('加载游戏失败:', error)
           set({ isLoading: false })

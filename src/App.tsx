@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import LifeTimeline from './components/LifeTimeline'
@@ -17,7 +17,11 @@ const queryClient = new QueryClient({
 })
 
 function App() {
-  const { currentProfile, isInitialized } = useLifeStore()
+  const { currentProfile, isInitialized, initialize } = useLifeStore()
+  
+  useEffect(() => {
+    initialize()
+  }, [initialize])
 
   if (!isInitialized) {
     return (
