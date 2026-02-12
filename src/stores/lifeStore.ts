@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { LifeProfile, CharacterState, GameEvent, Memory } from '@shared/types'
+import { LifeProfile, CharacterState, GameEvent, Memory } from '../../shared/types'
 
 interface LifeStore {
   // 当前状态

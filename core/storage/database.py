@@ -12,10 +12,27 @@ import zlib
 import pickle
 
 from ..shared.types import (
-    LifeProfile, CharacterState, GameEvent, Memory, 
-    FiveDimensions, Relationship, CareerInfo, 
-    EducationInfo, FinancialInfo, HealthInfo
+    LifeProfile, CharacterState, GameEvent, Memory
 )
+
+# 临时类型定义
+class FiveDimensions:
+    pass
+
+class Relationship:
+    pass
+
+class CareerInfo:
+    pass
+
+class EducationInfo:
+    pass
+
+class FinancialInfo:
+    pass
+
+class HealthInfo:
+    pass
 
 class DatabaseManager:
     """数据库管理器 - 事件溯源架构实现"""

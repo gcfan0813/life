@@ -1,5 +1,5 @@
 import React from 'react'
-import { GameEvent, EventChoice } from '@shared/types'
+import { GameEvent, EventChoice } from '../../shared/types'
 import { Clock, AlertCircle, TrendingUp } from 'lucide-react'
 
 interface EventCardProps {

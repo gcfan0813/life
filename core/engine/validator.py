@@ -7,7 +7,20 @@ import math
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 
-from ..shared.types import GameEvent, CharacterState, EraRules, RuleValidationResult
+from ..shared.types import GameEvent, CharacterState
+
+# 临时类型定义
+class EraRules:
+    def __init__(self, era, historicalEvents=None):
+        self.era = era
+        self.historicalEvents = historicalEvents or []
+
+class RuleValidationResult:
+    def __init__(self, plausibility, conflicts, warnings, suggestions):
+        self.plausibility = plausibility
+        self.conflicts = conflicts
+        self.warnings = warnings
+        self.suggestions = suggestions
 
 class RuleValidator:
     """规则校验引擎"""

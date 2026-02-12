@@ -8,9 +8,24 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
 from ..shared.types import (
-    GameEvent, CharacterState, AIReasoningResult, 
-    EventChoice, EventImpact, EventType
+    GameEvent, CharacterState, EventChoice
 )
+
+# 临时类型定义
+class AIReasoningResult:
+    def __init__(self, candidateEvents, reasoning, confidence, modelUsed, cost):
+        self.candidateEvents = candidateEvents
+        self.reasoning = reasoning
+        self.confidence = confidence
+        self.modelUsed = modelUsed
+        self.cost = cost
+
+class EventImpact:
+    def __init__(self, dimension, subDimension, change, duration_days=1):
+        self.dimension = dimension
+        self.subDimension = subDimension
+        self.change = change
+        self.duration_days = duration_days
 
 class AIGenerator:
     """AI事件生成器"""

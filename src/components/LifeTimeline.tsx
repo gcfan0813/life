@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLifeStore } from '../stores/lifeStore'
-import { GameEvent, CharacterState } from '@shared/types'
+import { GameEvent, CharacterState } from '../../shared/types'
 import EventCard from './EventCard'
 import StatusPanel from './StatusPanel'
 import TimeControls from './TimeControls'
