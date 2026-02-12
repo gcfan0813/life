@@ -4,7 +4,16 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    'sm:grid-cols-2',
+    'md:grid-cols-3', 
+    'lg:grid-cols-4',
+    'xl:grid-cols-5',
+  ],
   theme: {
+    screens: {
+      'xs': '475px',
+    },
     extend: {
       colors: {
         primary: {
@@ -81,6 +90,17 @@ export default {
       },
       backdropBlur: {
         xs: '2px',
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '112': '28rem',
+      },
+      maxWidth: {
+        'fit': 'fit-content',
+      },
+      minHeight: {
+        'screen-mobile': '100vh',
       },
     },
   },

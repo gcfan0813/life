@@ -11,6 +11,7 @@
 - **离线优先架构**：核心功能完全本地运行，无需网络
 - **用户数据主权**：全量本地加密存储，零网络传输
 - **零成本AI**：免费公共API + 本地量化模型分层部署
+- **智能模型管理**：动态加载、内存优化、设备兼容性检测
 
 ## 技术栈
 
@@ -154,9 +155,29 @@ npm run dev
 
 **AI推演级别：**
 - L0: 本地规则引擎（免费）
-- L1: 模板生成（免费）
+- L1: 本地量化模型（1.5B/3B/7B，智能内存管理）
 - L2: 免费API（硅基流动、智谱等）
 - L3: 高级API（更智能）
+
+### 本地模型动态加载系统
+
+**核心特性：**
+- **智能内存管理**：LRU缓存策略，自动卸载闲置模型释放内存
+- **设备兼容性检测**：自动识别CPU/GPU、内存、架构，推荐合适模型
+- **分层模型部署**：1.5B（轻量）、3B（平衡）、7B（高质量）量化模型
+- **依赖自动管理**：自动检查和安装llama-cpp-python等必要依赖
+- **性能基准测试**：预热测试、加载时间、生成速度、内存占用评估
+- **模型下载管理**：从HuggingFace安全下载，支持断点续传和完整性校验
+
+**模型规格：**
+- **1.5B Q4_K_M**：~1GB，适合2GB+内存设备，加载时间<3秒
+- **3B Q4_K_M**：~2GB，适合4GB+内存设备，加载时间<5秒  
+- **7B Q4_K_M**：~4GB，适合8GB+内存设备，加载时间<10秒
+
+**系统要求：**
+- Windows/macOS/Linux跨平台支持
+- 自动检测Apple Silicon、CUDA、DirectML等硬件加速
+- 最低2GB内存（1.5B模型），推荐4GB+内存获得更好体验
 
 #### 宏观事件系统
 - `GET /api/macro-events?year=2024` - 获取指定年份可能的宏观事件
@@ -279,8 +300,13 @@ life/
 │   └── requirements.txt  # Python依赖
 ├── core/                  # 核心引擎
 │   ├── ai/               # AI推演引擎
-│   │   ├── ai_service.py # AI服务（多API）
+│   │   ├── ai_service.py # AI服务（多API + 本地模型）
 │   │   ├── generator.py  # 事件生成器
+│   │   ├── local_model_loader.py # 本地模型动态加载器
+│   │   ├── model_manager.py # 模型管理器
+│   │   ├── model_dependencies.py # 依赖管理器
+│   │   ├── model_benchmark.py # 性能基准测试
+│   │   ├── device_compatibility.py # 设备兼容性检测
 │   │   ├── memory_system.py # 记忆系统
 │   │   └── simple_generator.py # 简化版生成器
 │   ├── engine/           # 规则引擎
@@ -341,13 +367,15 @@ life/
 - 前后端联调完成
 - **后端API接口完善**（角色创建、时间推进、事件处理、决策记录）
 - **前端与后端真实数据交互**（API调用、状态同步、错误处理）
-- **AI能力分层实现**（L0-L3四级AI推演系统）
+- **AI能力分层实现**（L0-L3四级AI推演系统，含本地量化模型L1）
 - **多API智能路由**（硅基流动、智谱AI）
 - **宏观事件系统**（12个历史事件+随机灾害）
 - **高敏事件处理**（三层防护机制）
 - **家族传承系统**（家族树、遗产继承、代际衰减）
 - **规则冲突检测**（矛盾/冗余/条件冲突检测）
 - **动态规则更新**（运行时增删改、版本控制）
+- **本地模型动态加载策略**（智能内存管理、设备兼容性检测、依赖管理、性能基准）
+- **移动端适配优化**（响应式布局、触摸交互、折叠菜单）
 
 🔄 **进行中**
 - 后端服务稳定性优化
@@ -360,20 +388,26 @@ life/
 ## 🔧 开发命令
 
 ```bash
-# 开发模式
-npm run dev
+# 前端开发
+npm run dev              # 启动开发服务器
+npm run build            # 构建生产版本
+npm run preview          # 预览构建结果
+npm run test             # 运行测试
+npm run lint             # 代码检查
 
-# 构建生产版本
-npm run build
+# 后端开发
+pip install -r requirements.txt                    # 安装Python依赖
+python -m tests.rule_engine                        # 运行本地规则引擎测试
+python -m server.ai_service                       # 启动AI推演服务
+python -m core.ai.model_manager                   # 测试模型管理器
+python -m core.ai.device_compatibility            # 测试设备兼容性检测
+python -m tests.test_local_model_loader            # 运行本地模型加载测试
 
-# 预览构建结果
-npm run preview
+# 数据库迁移
+python -m scripts.migrate_db                      # 数据库迁移
 
-# 运行测试
-npm test
-
-# 代码检查
-npm run lint
+# 模型管理
+python -c "from core.ai.model_manager import LocalModelManager; m = LocalModelManager(); print(m.get_available_models())"  # 查看可用模型
 ```
 
 ## 🐛 常见问题

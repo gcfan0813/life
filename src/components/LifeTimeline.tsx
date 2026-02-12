@@ -25,6 +25,50 @@ const LifeTimeline: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false)
   const [showCausality, setShowCausality] = useState(false)
   const [showMacroEvents, setShowMacroEvents] = useState(false)
+  
+  // 响应式状态
+  const [isMobile, setIsMobile] = useState(false)
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [touchEndX, setTouchEndX] = useState(0)
+
+  // 检测移动端
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // 触摸滑动处理
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEndX(e.targetTouches[0].clientX)
+  }
+
+  const handleTouchEnd = () => {
+    if (!touchStartX || !touchEndX) return
+    
+    const distance = touchStartX - touchEndX
+    const isLeftSwipe = distance > 50
+    const isRightSwipe = distance < -50
+
+    if (isLeftSwipe && pendingEvents.length > 0) {
+      // 左滑：下一个事件
+      handleSkip()
+    } else if (isRightSwipe && currentEventIndex > 0) {
+      // 右滑：上一个事件
+      handleRewind()
+    }
+    
+    setTouchStartX(0)
+    setTouchEndX(0)
+  }
 
   // 获取当前年份
   const currentYear = currentState?.currentDate 
@@ -91,24 +135,26 @@ const LifeTimeline: React.FC = () => {
 
   if (!currentState) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
+      <div className="flex items-center justify-center min-h-screen-mobile">
+        <div className="text-center px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">加载角色状态中...</p>
+          <p className="text-gray-600 text-sm sm:text-base">加载角色状态中...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto px-2 sm:px-0">
       {/* 状态面板 */}
-      <StatusPanel state={currentState} />
+      <div className="mb-4">
+        <StatusPanel state={currentState} />
+      </div>
       
-      {/* 时间控制栏 */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      {/* 时间控制栏 - 响应式 */}
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <button
               onClick={handlePlayPause}
               className={`p-2 rounded-full ${
@@ -118,7 +164,7 @@ const LifeTimeline: React.FC = () => {
               } hover:opacity-80 transition-opacity`}
               disabled={isLoading}
             >
-              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+              {isPlaying ? <Pause size={16} className="sm:size-20" /> : <Play size={16} className="sm:size-20" />}
             </button>
             
             <button

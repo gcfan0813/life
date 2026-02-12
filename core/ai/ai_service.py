@@ -14,12 +14,13 @@ from enum import Enum
 # AI推演级别
 class AILevel(Enum):
     L0_LOCAL = "L0"  # 本地规则引擎（免费）
-    L1_TEMPLATE = "L1"  # 模板生成（免费）
+    L1_LOCAL_MODEL = "L1"  # 本地量化模型（免费）
     L2_FREE_API = "L2"  # 免费API（有限额）
     L3_ADVANCED = "L3"  # 高级API（付费）
 
 class APIProvider(Enum):
     LOCAL = "local"  # 本地生成
+    LOCAL_MODEL = "local_model"  # 本地量化模型
     SILICON_FLOW = "silicon_flow"  # 硅基流动
     ZHIPU = "zhipu"  # 智谱AI
     BAIDU = "baidu"  # 百度
@@ -36,10 +37,57 @@ class AIService:
         self.silicon_flow_model = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
         self.fallback_chain = [
             APIProvider.LOCAL,
+            APIProvider.LOCAL_MODEL,
             APIProvider.SILICON_FLOW,
             APIProvider.ZHIPU,
             APIProvider.BAIDU
         ]
+        
+        # 本地模型管理器
+        self.local_model = None
+        self._init_local_model()
+        
+        # 检查本地模型系统状态
+        self._check_local_model_system()
+    
+    def _init_local_model(self):
+        """初始化本地模型管理器"""
+        try:
+            from core.ai.local_model_loader import local_model_manager
+            self.local_model = local_model_manager
+            print("[AI] 本地模型管理器已初始化")
+        except ImportError as e:
+            print(f"[AI] 本地模型管理器初始化失败: {e}")
+    
+    def _check_local_model_system(self):
+        """检查本地模型系统状态"""
+        if not self.local_model:
+            print("[AI] WARNING: 本地模型系统不可用")
+            return
+        
+        try:
+            # 检查依赖状态
+            deps = self.local_model.get_dependency_status()
+            if deps["missing_required"]:
+                print(f"[AI] WARNING: 缺少必需依赖: {', '.join(deps['missing_required'])}")
+            
+            # 检查兼容性
+            compat = self.local_model.get_compatibility_report()
+            if not compat["can_run_local_models"]:
+                print("[AI] WARNING: 设备不完全兼容本地模型运行")
+            
+            # 显示可用模型
+            available = self.local_model.get_available_models()
+            ready_models = [m for m in available if m["available"]]
+            downloadable = [m for m in available if m.get("downloadable") and not m["available"]]
+            
+            print(f"[AI] 本地模型状态: {len(ready_models)} 个就绪, {len(downloadable)} 个可下载")
+            
+            if ready_models:
+                print(f"[AI] 就绪模型: {', '.join([m['name'] for m in ready_models[:3]])}")
+            
+        except Exception as e:
+            print(f"[AI] 本地模型系统检查失败: {e}")
         
     def _load_api_keys(self) -> Dict[str, str]:
         """加载API密钥"""
@@ -80,8 +128,8 @@ class AIService:
         try:
             if level == AILevel.L0_LOCAL:
                 return await self._generate_local(state, num_events)
-            elif level == AILevel.L1_TEMPLATE:
-                return await self._generate_template(state, num_events)
+            elif level == AILevel.L1_LOCAL_MODEL:
+                return await self._generate_local_model(state, num_events)
             elif level == AILevel.L2_FREE_API:
                 return await self._generate_with_api(state, num_events)
             elif level == AILevel.L3_ADVANCED:
@@ -124,12 +172,38 @@ class AIService:
         }
     
     async def _generate_template(self, state: Any, num_events: int) -> Dict[str, Any]:
-        """L1: 模板增强生成"""
-        result = await self._generate_local(state, num_events)
-        result["reasoning"] = "基于模板系统增强生成"
-        result["confidence"] = 0.80
-        result["level"] = "L1_TEMPLATE"
-        return result
+        """L1: 模板增强生成（已弃用，使用本地模型）"""
+        return await self._generate_local_model(state, num_events)
+    
+    async def _generate_local_model(self, state: Any, num_events: int) -> Dict[str, Any]:
+        """L1: 本地量化模型生成"""
+        if not self.local_model:
+            # 回退到本地规则
+            print("[AI] 本地模型不可用，使用规则引擎")
+            return await self._generate_local(state, num_events)
+        
+        try:
+            # 检查模型状态
+            status = self.local_model.get_status()
+            if status["status"] != "ready":
+                # 尝试加载模型
+                print("[AI] 正在加载本地模型...")
+                if not self.local_model.load_model():
+                    print("[AI] 本地模型加载失败，使用规则引擎")
+                    return await self._generate_local(state, num_events)
+            
+            # 使用本地模型生成
+            result = self.local_model.generate_events(state, num_events)
+            
+            if result.get("events"):
+                return result
+            else:
+                print("[AI] 本地模型生成失败，使用规则引擎")
+                return await self._generate_local(state, num_events)
+                
+        except Exception as e:
+            print(f"[AI] 本地模型出错: {e}")
+            return await self._generate_local(state, num_events)
     
     async def _generate_with_api(self, state: Any, num_events: int) -> Dict[str, Any]:
         """L2: 使用免费API生成"""
@@ -158,7 +232,11 @@ class AIService:
             if provider == APIProvider.LOCAL:
                 continue
             try:
-                if provider == APIProvider.SILICON_FLOW and self.api_keys.get('silicon_flow'):
+                if provider == APIProvider.LOCAL_MODEL and self.local_model:
+                    result = await self._generate_local_model(state, num_events)
+                    if result.get("events"):
+                        return result
+                elif provider == APIProvider.SILICON_FLOW and self.api_keys.get('silicon_flow'):
                     return await self._call_silicon_flow(state, num_events)
                 elif provider == APIProvider.ZHIPU and self.api_keys.get('zhipu'):
                     return await self._call_zhipu(state, num_events)
