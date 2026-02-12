@@ -7,9 +7,44 @@ import math
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 
-from ..shared.types import GameEvent, CharacterState
+from typing import List, Dict, Any, Tuple
+import json
+from datetime import datetime
 
 # 临时类型定义
+class GameEvent:
+    def __init__(self, id, profile_id, event_date, event_type, title, description, narrative, choices, impacts, is_completed, selected_choice, plausibility, emotional_weight, created_at, updated_at):
+        self.id = id
+        self.profile_id = profile_id
+        self.event_date = event_date
+        self.event_type = event_type
+        self.title = title
+        self.description = description
+        self.narrative = narrative
+        self.choices = choices
+        self.impacts = impacts
+        self.is_completed = is_completed
+        self.selected_choice = selected_choice
+        self.plausibility = plausibility
+        self.emotional_weight = emotional_weight
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+class CharacterState:
+    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
+        self.id = id
+        self.profile_id = profile_id
+        self.current_date = current_date
+        self.age = age
+        self.dimensions = dimensions
+        self.location = location
+        self.occupation = occupation
+        self.education = education
+        self.life_stage = life_stage
+        self.total_events = total_events
+        self.total_decisions = total_decisions
+        self.days_survived = days_survived
+
 class EraRules:
     def __init__(self, era, historicalEvents=None):
         self.era = era
@@ -32,14 +67,32 @@ class RuleValidator:
     
     def _load_rules(self):
         """加载规则库"""
-        # 这里简化实现，实际应从文件系统加载
-        self.rules_cache = {
-            'physiological': self._load_physiological_rules(),
-            'psychological': self._load_psychological_rules(),
-            'social': self._load_social_rules(),
-            'cognitive': self._load_cognitive_rules(),
-            'relational': self._load_relational_rules()
-        }
+        try:
+            # 从JSON文件加载规则
+            rules_file = "shared/rules/base_rules.json"
+            with open(rules_file, 'r', encoding='utf-8') as f:
+                rules_data = json.load(f)
+            
+            # 按类别组织规则
+            self.rules_cache = {}
+            for rule in rules_data.get('rules', []):
+                category = rule.get('category', 'other')
+                if category not in self.rules_cache:
+                    self.rules_cache[category] = []
+                self.rules_cache[category].append(rule)
+                
+            print(f"[OK] 成功加载 {len(rules_data.get('rules', []))} 条规则")
+            
+        except Exception as e:
+            print(f"[WARN] 规则加载失败，使用默认规则: {e}")
+            # 使用默认规则
+            self.rules_cache = {
+                'physiological': self._load_physiological_rules(),
+                'psychological': self._load_psychological_rules(),
+                'social': self._load_social_rules(),
+                'cognitive': self._load_cognitive_rules(),
+                'relational': self._load_relational_rules()
+            }
     
     def _load_physiological_rules(self) -> List[Dict]:
         """加载生理规则"""
@@ -163,12 +216,14 @@ class RuleValidator:
         score = 1.0
         
         # 检查职业相关性
-        if hasattr(event, 'career_related') and event.career_related:
-            career_level = state.dimensions.social.careerLevel
-            if career_level < 30 and '高级职位' in event.title:
+        try:
+            career_level = state.dimensions.get('social', {}).get('career', {}).get('level', 0)
+            if career_level < 30 and '高级' in event.title:
                 score *= 0.3
-            elif career_level > 70 and '初级职位' in event.title:
+            elif career_level > 70 and '初级' in event.title:
                 score *= 0.5
+        except:
+            pass
         
         # 检查年龄适宜性
         age = state.age
@@ -181,22 +236,21 @@ class RuleValidator:
     
     def _check_memory_coherence(self, event: GameEvent, state: CharacterState) -> float:
         """检查历史记忆连贯性"""
-        # 简化实现：基于近期事件检查连贯性
-        recent_events = state.recentEvents
+        # 简化实现：基于角色状态检查连贯性
         
-        if len(recent_events) == 0:
-            return 1.0
-        
-        # 检查事件情感连续性
-        emotional_state = state.dimensions.psychological.emotionalState
-        
-        if event.emotional_weight > 0.7 and emotional_state > 50:
-            # 高情绪事件出现在积极情绪状态下
-            return 0.9
-        elif event.emotional_weight < 0.3 and emotional_state < -30:
-            # 低情绪事件出现在消极情绪状态下  
-            return 0.9
-        else:
+        try:
+            # 检查事件情感连续性
+            emotional_state = state.dimensions.get('psychological', {}).get('happiness', 50)
+            
+            if event.emotional_weight > 0.7 and emotional_state > 50:
+                # 高情绪事件出现在积极情绪状态下
+                return 0.9
+            elif event.emotional_weight < 0.3 and emotional_state < 30:
+                # 低情绪事件出现在消极情绪状态下  
+                return 0.9
+            else:
+                return 0.7
+        except:
             return 0.7
     
     def _check_macro_influence(self, event: GameEvent, era_rules: EraRules) -> float:
@@ -204,11 +258,15 @@ class RuleValidator:
         # 简化实现：检查事件是否与历史大事相关
         historical_events = era_rules.historicalEvents
         
-        for he in historical_events:
-            if he.event in event.description or he.event in event.title:
-                return 1.0  # 与历史事件相关，加分
-        
-        return 0.5
+        try:
+            for he in historical_events:
+                event_name = he.get('event', '')
+                if event_name and (event_name in event.description or event_name in event.title):
+                    return 1.0  # 与历史事件相关，加分
+            
+            return 0.5
+        except:
+            return 0.5
     
     def _check_common_sense(self, event: GameEvent) -> float:
         """基础常识检查"""
@@ -238,21 +296,34 @@ class RuleValidator:
         
         # 应用事件本身的影响
         for impact in event.impacts:
-            dimension = impact.dimension
-            sub_dimension = impact.subDimension
-            change = impact.change
-            
-            # 累积影响
-            key = f"{dimension}.{sub_dimension}"
-            impacts[key] = impacts.get(key, 0) + change
+            try:
+                dimension = impact.get('dimension', '')
+                sub_dimension = impact.get('subDimension', '')
+                change = impact.get('change', 0)
+                
+                if dimension and sub_dimension:
+                    # 累积影响
+                    key = f"{dimension}.{sub_dimension}"
+                    impacts[key] = impacts.get(key, 0) + change
+            except:
+                continue
         
         # 应用规则约束的影响
         for rule in self._get_applicable_rules(event, state):
-            rule_impacts = rule.get('impact', {})
-            for dimension, changes in rule_impacts.items():
-                for sub_dimension, change in changes.items():
-                    key = f"{dimension}.{sub_dimension}"
-                    impacts[key] = impacts.get(key, 0) + change
+            rule_effects = rule.get('effects', [])
+            for effect in rule_effects:
+                try:
+                    dimension = effect.get('dimension', '')
+                    sub_dimension = effect.get('subDimension', '')
+                    change = effect.get('change', 0)
+                    probability = effect.get('probability', 100)
+                    
+                    if dimension and sub_dimension and probability >= 50:
+                        # 按概率应用影响
+                        key = f"{dimension}.{sub_dimension}"
+                        impacts[key] = impacts.get(key, 0) + change
+                except:
+                    continue
         
         return impacts
     

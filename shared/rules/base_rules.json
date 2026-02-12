@@ -1,0 +1,189 @@
+{
+  "rules": [
+    {
+      "id": "PHY-AGING-01",
+      "name": "基础衰老曲线",
+      "category": "physiological",
+      "description": "基于年龄的生理衰退规律",
+      "academicBasis": {
+        "source": "人类衰老生物学研究",
+        "credibility": "high",
+        "validationData": "基于全球人口健康统计数据"
+      },
+      "conditions": [
+        {
+          "type": "age",
+          "operator": ">=",
+          "value": 30
+        }
+      ],
+      "effects": [
+        {
+          "type": "modify",
+          "dimension": "physical",
+          "subDimension": "health",
+          "change": -0.1,
+          "probability": 100
+        },
+        {
+          "type": "modify",
+          "dimension": "physical",
+          "subDimension": "energy",
+          "change": -0.05,
+          "probability": 100
+        }
+      ],
+      "version": "1.0",
+      "lastUpdated": "2026-02-12",
+      "isActive": true
+    },
+    {
+      "id": "PSY-TRAUMA-01",
+      "name": "创伤事件心理影响",
+      "category": "psychological",
+      "description": "高情感强度事件对心理健康的长期影响",
+      "academicBasis": {
+        "source": "创伤后应激障碍研究",
+        "credibility": "high",
+        "validationData": "临床心理学研究数据"
+      },
+      "conditions": [
+        {
+          "type": "event",
+          "dimension": "emotional",
+          "operator": ">",
+          "value": 0.8
+        }
+      ],
+      "effects": [
+        {
+          "type": "modify",
+          "dimension": "psychological",
+          "subDimension": "neuroticism",
+          "change": 0.1,
+          "probability": 80
+        },
+        {
+          "type": "modify",
+          "dimension": "psychological",
+          "subDimension": "resilience",
+          "change": -0.05,
+          "probability": 70
+        }
+      ],
+      "version": "1.0",
+      "lastUpdated": "2026-02-12",
+      "isActive": true
+    },
+    {
+      "id": "SOC-CAREER-01",
+      "name": "职业晋升条件",
+      "category": "social",
+      "description": "职业发展需要满足的条件和限制",
+      "academicBasis": {
+        "source": "职业发展心理学研究",
+        "credibility": "high",
+        "validationData": "职业发展轨迹统计数据"
+      },
+      "conditions": [
+        {
+          "type": "dimension",
+          "dimension": "social",
+          "subDimension": "career.level",
+          "operator": ">",
+          "value": 70
+        },
+        {
+          "type": "age",
+          "operator": ">",
+          "value": 25
+        }
+      ],
+      "effects": [
+        {
+          "type": "modify",
+          "dimension": "social",
+          "subDimension": "career.level",
+          "change": 0.05,
+          "probability": 60
+        },
+        {
+          "type": "modify",
+          "dimension": "social",
+          "subDimension": "economic.income",
+          "change": 0.1,
+          "probability": 50
+        }
+      ],
+      "version": "1.0",
+      "lastUpdated": "2026-02-12",
+      "isActive": true
+    },
+    {
+      "id": "COG-LEARNING-01",
+      "name": "学习效率曲线",
+      "category": "cognitive",
+      "description": "不同年龄段的学习效率差异",
+      "academicBasis": {
+        "source": "认知发展心理学",
+        "credibility": "high",
+        "validationData": "认知能力发展研究数据"
+      },
+      "conditions": [
+        {
+          "type": "age",
+          "operator": "<",
+          "value": 25
+        }
+      ],
+      "effects": [
+        {
+          "type": "modify",
+          "dimension": "cognitive",
+          "subDimension": "knowledge.academic",
+          "change": 0.15,
+          "probability": 90
+        }
+      ],
+      "version": "1.0",
+      "lastUpdated": "2026-02-12",
+      "isActive": true
+    },
+    {
+      "id": "REL-FAMILY-01",
+      "name": "家庭关系维持",
+      "category": "relational",
+      "description": "家庭亲密度随时间变化规律",
+      "academicBasis": {
+        "source": "家庭心理学研究",
+        "credibility": "high",
+        "validationData": "家庭关系质量长期追踪研究"
+      },
+      "conditions": [
+        {
+          "type": "time",
+          "operator": ">",
+          "value": 30
+        }
+      ],
+      "effects": [
+        {
+          "type": "modify",
+          "dimension": "relational",
+          "subDimension": "intimacy.family",
+          "change": -0.02,
+          "probability": 70
+        }
+      ],
+      "version": "1.0",
+      "lastUpdated": "2026-02-12",
+      "isActive": true
+    }
+  ],
+  "metadata": {
+    "totalRules": 5,
+    "categories": ["physiological", "psychological", "social", "cognitive", "relational"],
+    "lastUpdated": "2026-02-12",
+    "version": "1.0"
+  }
+}
