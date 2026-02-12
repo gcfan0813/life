@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "description": "扩展学术验证规则库 - 500+规则",
+  "description": "扩展学术验证规则库",
   "categories": {
     "physiological": {
       "name": "生理系统规则",

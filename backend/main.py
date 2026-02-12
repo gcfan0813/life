@@ -1385,7 +1385,7 @@ if __name__ == "__main__":
     print(f"服务器地址: http://localhost:8000")
     print(f"API文档: http://localhost:8000/docs")
     print(f"核心引擎: 已集成")
-    print(f"规则引擎: 500+规则")
+    print(f"规则引擎: 已加载")
     print(f"AI引擎: 已启用")
     print("="*60)
     

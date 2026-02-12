@@ -93,7 +93,7 @@ npm run build:mobile
 - `package.json` - 前端依赖和脚本
 - `requirements.txt` - Python依赖
 - `shared/config/` - 共享配置文件
-- `shared/rules/` - 规则库（500+条学术验证）
+- `shared/rules/` - 规则库（学术验证规则）
 
 ## 测试策略
 
