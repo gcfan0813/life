@@ -45,44 +45,44 @@ class CharacterInitializer:
         """加载基础属性配置"""
         return {
             'physiological': {
-                'health': 80,
-                'energy': 70,
-                'appearance': 50,
-                'fitness': 60
+                'health': 85,
+                'energy': 75,
+                'appearance': 55,
+                'fitness': 65
             },
             'psychological': {
-                'openness': 50,
-                'conscientiousness': 50,
-                'extraversion': 50,
-                'agreeableness': 50,
-                'neuroticism': 50,
-                'happiness': 60,
-                'stress': 30,
-                'resilience': 50
+                'openness': 55,
+                'conscientiousness': 55,
+                'extraversion': 55,
+                'agreeableness': 55,
+                'neuroticism': 45,
+                'happiness': 65,
+                'stress': 25,
+                'resilience': 55
             },
             'social': {
-                'socialCapital': 30,
+                'socialCapital': 35,
                 'career': {
                     'level': 0,
-                    'satisfaction': 50,
+                    'satisfaction': 0,
                     'income': 0
                 },
                 'economic': {
                     'wealth': 0,
                     'debt': 0,
-                    'credit': 50
+                    'credit': 0
                 }
             },
             'cognitive': {
                 'knowledge': {
                     'academic': 0,
                     'practical': 0,
-                    'creative': 50
+                    'creative': 0
                 },
                 'skills': {
-                    'communication': 50,
-                    'problemSolving': 50,
-                    'leadership': 30
+                    'communication': 0,
+                    'problemSolving': 0,
+                    'leadership': 0
                 },
                 'memory': {
                     'shortTerm': 70,
@@ -92,14 +92,14 @@ class CharacterInitializer:
             },
             'relational': {
                 'intimacy': {
-                    'family': 70,
-                    'friends': 40,
+                    'family': 75,
+                    'friends': 15,
                     'romantic': 0
                 },
                 'network': {
-                    'size': 10,
-                    'quality': 50,
-                    'diversity': 30
+                    'size': 5,
+                    'quality': 25,
+                    'diversity': 10
                 }
             }
         }

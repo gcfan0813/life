@@ -213,7 +213,7 @@ class DatabaseManager:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             profile.id, profile.name, profile.birth_date, profile.birth_place,
-            profile.gender, pickle.dumps(profile.initial_traits), profile.era,
+            profile.gender, json.dumps(profile.initial_traits), profile.era,
             profile.difficulty, profile.created_at, profile.updated_at
         ))
         
@@ -234,7 +234,7 @@ class DatabaseManager:
         for row in rows:
             profile = LifeProfile(
                 id=row[0], name=row[1], birth_date=row[2], birth_place=row[3],
-                gender=row[4], initial_traits=pickle.loads(row[5]), era=row[6],
+                gender=row[4], initial_traits=json.loads(row[5]), era=row[6],
                 difficulty=row[7], created_at=row[8], updated_at=row[9]
             )
             profiles.append(profile)
@@ -255,8 +255,8 @@ class DatabaseManager:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             profile_id, event.event_date, event.event_type, event.title,
-            event.description, event.narrative, pickle.dumps(event.choices),
-            pickle.dumps(event.impacts), event.is_completed, event.selected_choice,
+            event.description, event.narrative, json.dumps(event.choices),
+            json.dumps(event.impacts), event.is_completed, event.selected_choice,
             event.plausibility, event.emotional_weight, event.created_at
         ))
         
@@ -323,7 +323,7 @@ class DatabaseManager:
             event = GameEvent(
                 id=row[0], profile_id=row[1], event_date=row[2], event_type=row[3],
                 title=row[4], description=row[5], narrative=row[6],
-                choices=pickle.loads(row[7]), impacts=pickle.loads(row[8]),
+                choices=json.loads(row[7]), impacts=json.loads(row[8]),
                 is_completed=bool(row[9]), selected_choice=row[10],
                 plausibility=row[11], emotional_weight=row[12],
                 created_at=row[13], updated_at=row[13]

@@ -4,6 +4,7 @@
 
 import asyncio
 import json
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Tuple
 
@@ -115,7 +116,9 @@ class SimulationEngine:
         
         # 6. 保存事件和状态
         for event in validated_events:
-            self.db_manager.save_event(profile_id, event)
+            saved_event_id = self.db_manager.save_event(profile_id, event)
+            # 更新事件ID为数据库保存后的ID
+            event.id = saved_event_id
         
         self.db_manager.save_snapshot(profile_id, new_date, new_state, len(validated_events))
         
@@ -161,7 +164,7 @@ class SimulationEngine:
             new_state=new_state,
             new_memories=new_memories,
             immediate_effects=immediate_effects,
-            long_term_effects=selected_choice.longTermEffects
+            long_term_effects=[]  # 暂时没有长期影响
         )
     
     def _determine_model_level(self, state: CharacterState) -> str:
@@ -300,15 +303,56 @@ class SimulationEngine:
     
     def _get_event_by_id(self, profile_id: str, event_id: str) -> GameEvent:
         """根据ID获取事件"""
-        # 简化实现：从数据库获取
-        # 实际应该查询数据库
+        # 尝试将字符串ID转换为整数（如果可能）
+        try:
+            event_id_int = int(event_id)
+        except ValueError:
+            # 如果无法转换，可能是字符串ID，尝试按字符串查询
+            event_id_int = None
+        
+        conn = sqlite3.connect(self.db_manager.db_path)
+        cursor = conn.cursor()
+        
+        if event_id_int is not None:
+            cursor.execute("""
+                SELECT * FROM event_log 
+                WHERE profile_id = ? AND id = ?
+            """, (profile_id, event_id_int))
+        else:
+            cursor.execute("""
+                SELECT * FROM event_log 
+                WHERE profile_id = ? AND title LIKE ?
+                ORDER BY id DESC LIMIT 1
+            """, (profile_id, f"%{event_id}%"))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return GameEvent(
+                id=row[0], profile_id=row[1], event_date=row[2], event_type=row[3],
+                title=row[4], description=row[5], narrative=row[6],
+                choices=json.loads(row[7]), impacts=json.loads(row[8]),
+                is_completed=bool(row[9]), selected_choice=row[10],
+                plausibility=row[11], emotional_weight=row[12],
+                created_at=row[13], updated_at=row[13]
+            )
+        
         return None
     
     def _apply_immediate_effects(self, state: CharacterState, choice) -> Dict[str, float]:
         """应用即时影响"""
         effects = {}
         
-        for impact in choice.immediateImpacts:
+        # 检查choice是否包含immediateImpacts属性
+        if hasattr(choice, 'immediateImpacts'):
+            impacts = choice.immediateImpacts
+        elif isinstance(choice, dict) and 'immediateImpacts' in choice:
+            impacts = choice['immediateImpacts']
+        else:
+            return effects
+        
+        for impact in impacts:
             try:
                 dimension = impact.get('dimension', '')
                 sub_dimension = impact.get('subDimension', '')
@@ -346,8 +390,13 @@ class SimulationEngine:
                 dimension = parts[0]
                 sub_dimension = parts[1]
                 
-                if dimension in new_state.dimensions:
-                    if sub_dimension in new_state.dimensions[dimension]:
+                if (dimension in new_state.dimensions and 
+                    isinstance(new_state.dimensions[dimension], dict) and
+                    sub_dimension in new_state.dimensions[dimension]):
+                    
+                    current_value = new_state.dimensions[dimension][sub_dimension]
+                    # 只对数值类型进行运算
+                    if isinstance(current_value, (int, float)):
                         new_state.dimensions[dimension][sub_dimension] += change
         
         self._normalize_dimensions(new_state.dimensions)
@@ -357,11 +406,20 @@ class SimulationEngine:
         """生成决策记忆"""
         now = datetime.now().isoformat()
         
+        # 安全获取选择文本
+        choice_text = ""
+        if hasattr(event, 'choices') and event.choices:
+            choice = event.choices[choice_index]
+            if hasattr(choice, 'text'):
+                choice_text = choice.text
+            elif isinstance(choice, dict) and 'text' in choice:
+                choice_text = choice['text']
+        
         memory = Memory(
             id=f"decision_{event.id}_{choice_index}",
             profile_id=profile_id,
             event_id=event.id,
-            summary=f"在{event.title}中选择了{event.choices[choice_index].text}",
+            summary=f"在{event.title}中选择了{choice_text}",
             emotional_weight=event.emotional_weight * 1.2,  # 决策记忆更深刻
             recall_count=0,
             last_recalled=None,

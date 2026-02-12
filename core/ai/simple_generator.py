@@ -40,6 +40,15 @@ class SimpleAIGenerator:
                         {'text': '积极互动', 'immediateImpacts': [{'dimension': 'relational', 'subDimension': 'family', 'change': 5}]},
                         {'text': '独自活动', 'immediateImpacts': [{'dimension': 'psychological', 'subDimension': 'happiness', 'change': -1}]}
                     ]
+                },
+                {
+                    'title': '运动锻炼',
+                    'description': '参加体育活动锻炼身体',
+                    'emotional_weight': 0.3,
+                    'choices': [
+                        {'text': '坚持锻炼', 'immediateImpacts': [{'dimension': 'physiological', 'subDimension': 'fitness', 'change': 3}]},
+                        {'text': '休息一下', 'immediateImpacts': [{'dimension': 'psychological', 'subDimension': 'happiness', 'change': 2}]}
+                    ]
                 }
             ],
             'L1': [
@@ -60,6 +69,15 @@ class SimpleAIGenerator:
                         {'text': '接受挑战', 'immediateImpacts': [{'dimension': 'social', 'subDimension': 'careerLevel', 'change': 10}]},
                         {'text': '继续寻找', 'immediateImpacts': [{'dimension': 'social', 'subDimension': 'economic', 'change': -5}]}
                     ]
+                },
+                {
+                    'title': '恋爱关系',
+                    'description': '遇到心动的人开始恋爱',
+                    'emotional_weight': 0.8,
+                    'choices': [
+                        {'text': '主动追求', 'immediateImpacts': [{'dimension': 'relational', 'subDimension': 'romantic', 'change': 10}]},
+                        {'text': '保持朋友', 'immediateImpacts': [{'dimension': 'psychological', 'subDimension': 'stress', 'change': -2}]}
+                    ]
                 }
             ],
             'L2': [
@@ -79,6 +97,15 @@ class SimpleAIGenerator:
                     'choices': [
                         {'text': '勇敢尝试', 'immediateImpacts': [{'dimension': 'social', 'subDimension': 'economic', 'change': 20}]},
                         {'text': '谨慎观望', 'immediateImpacts': [{'dimension': 'psychological', 'subDimension': 'stress', 'change': -3}]}
+                    ]
+                },
+                {
+                    'title': '家庭建设',
+                    'description': '考虑组建家庭的重要决定',
+                    'emotional_weight': 0.9,
+                    'choices': [
+                        {'text': '建立家庭', 'immediateImpacts': [{'dimension': 'relational', 'subDimension': 'family', 'change': 15}]},
+                        {'text': '专注事业', 'immediateImpacts': [{'dimension': 'social', 'subDimension': 'careerLevel', 'change': 10}]}
                     ]
                 }
             ]
