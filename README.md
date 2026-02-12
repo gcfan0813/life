@@ -149,6 +149,25 @@ npm run dev
 - 自然灾害：地震、洪涝
 - 社会变革：教育改革、医疗改革
 
+#### 高敏事件处理系统
+- `GET /api/sensitive-events/types` - 获取高敏事件类型列表
+- `POST /api/events/check-sensitivity` - 检查事件敏感度
+- `GET /api/sensitive-events/{event_id}/options` - 获取高敏事件处理选项
+- `POST /api/sensitive-events/{event_id}/process` - 处理高敏事件
+- `GET /api/sensitive-events/list` - 获取高敏事件列表
+
+**处理方式：**
+- 跳过（skip）：不经历这个事件
+- 温和处理（soften）：降低影响，使用温和叙述
+- 完整体验（full）：完整经历所有内容
+
+**高敏事件类型：**
+- 死亡相关：角色死亡、亲人离世
+- 重大疾病：癌症、重大事故
+- 家庭变故：离婚、家庭破裂
+- 心理创伤：抑郁、绝望时刻
+- 经济危机：破产、失业
+
 #### 系统信息
 - `GET /api/health` - 健康检查（显示引擎状态）
 - `GET /api/data/exists` - 检查数据是否存在

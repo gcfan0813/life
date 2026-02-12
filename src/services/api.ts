@@ -368,6 +368,80 @@ export class APIService {
       method: 'POST'
     })
   }
+
+  // ==================== 高敏事件API ====================
+
+  // 获取高敏事件类型
+  async getSensitiveEventTypes(): Promise<APIResponse<{
+    types: Array<{ value: string; label: string }>
+    sensitivity_levels: Array<{ value: string; label: string }>
+  }>> {
+    return this.request('/sensitive-events/types')
+  }
+
+  // 检查事件敏感度
+  async checkEventSensitivity(eventData: Record<string, any>): Promise<APIResponse<{
+    is_sensitive: boolean
+    sensitivity_level: string | null
+  }>> {
+    return this.request('/events/check-sensitivity', {
+      method: 'POST',
+      body: JSON.stringify(eventData)
+    })
+  }
+
+  // 获取高敏事件处理选项
+  async getSensitiveEventOptions(eventId: string): Promise<APIResponse<{
+    is_sensitive: boolean
+    sensitivity_level: string
+    event_type: string
+    title: string
+    description: string
+    options: Array<{
+      id: string
+      label: string
+      description: string
+    }>
+    support_resources: string[]
+    warning: string
+  }>> {
+    return this.request(`/sensitive-events/${eventId}/options`)
+  }
+
+  // 处理高敏事件
+  async processSensitiveEvent(
+    eventId: string,
+    handlingMode: 'skip' | 'soften' | 'full',
+    profileId?: string
+  ): Promise<APIResponse<{
+    success: boolean
+    event_id: string
+    handling_mode: string
+    narrative: string
+    impacts: Record<string, any>
+    support_resources: string[]
+    sensitivity_level: string
+  }>> {
+    let url = `/sensitive-events/${eventId}/process?handling_mode=${handlingMode}`
+    if (profileId) {
+      url += `&profile_id=${profileId}`
+    }
+    return this.request(url, { method: 'POST' })
+  }
+
+  // 获取高敏事件列表
+  async listSensitiveEvents(): Promise<APIResponse<{
+    events: Array<{
+      id: string
+      type: string
+      level: string
+      title: string
+      description: string
+    }>
+    total: number
+  }>> {
+    return this.request('/sensitive-events/list')
+  }
 }
 
 // 全局API服务实例

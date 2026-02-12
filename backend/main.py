@@ -20,6 +20,7 @@ from core.engine.simulation import simulation_engine, CharacterState, GameEvent,
 from core.engine.character import CharacterInitializer
 from core.engine.validator import RuleValidator, EraRules
 from core.engine.macro_events import macro_event_system, MacroEventType
+from core.engine.sensitive_events import hs_handler, SensitivityLevel, HandlingMode, HighSensitivityEventType
 from core.storage.database import db_manager
 from shared.types import LifeProfile, CharacterState as PyCharacterState, GameEvent as PyGameEvent, Memory as PyMemory
 
@@ -1373,6 +1374,121 @@ async def trigger_macro_event(profile_id: str, event_id: str):
     except Exception as e:
         import traceback
         traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
+
+# ==================== 高敏事件API ====================
+
+@app.get("/api/sensitive-events/types", response_model=APIResponse)
+async def get_sensitive_event_types():
+    """获取高敏事件类型列表"""
+    return APIResponse(
+        success=True,
+        data={
+            "types": [
+                {"value": "death", "label": "死亡相关"},
+                {"value": "serious_illness", "label": "重大疾病"},
+                {"value": "family_breakdown", "label": "家庭变故"},
+                {"value": "divorce", "label": "婚姻结束"},
+                {"value": "job_loss", "label": "失业"},
+                {"value": "bankruptcy", "label": "经济危机"},
+                {"value": "trauma", "label": "心理创伤"},
+                {"value": "addiction", "label": "成瘾"},
+                {"value": "crime", "label": "犯罪"},
+                {"value": "suicide_ideology", "label": "绝望时刻"}
+            ],
+            "sensitivity_levels": [
+                {"value": "low", "label": "低敏感"},
+                {"value": "medium", "label": "中敏感"},
+                {"value": "high", "label": "高敏感"},
+                {"value": "critical", "label": "极高敏感"}
+            ]
+        }
+    )
+
+@app.post("/api/events/check-sensitivity", response_model=APIResponse)
+async def check_event_sensitivity(event_data: Dict[str, Any]):
+    """检查事件的敏感度"""
+    try:
+        level = hs_handler.check_sensitivity(event_data)
+        
+        return APIResponse(
+            success=True,
+            data={
+                "is_sensitive": level is not None,
+                "sensitivity_level": level.value if level else None,
+                "event_data": event_data
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/sensitive-events/{event_id}/options", response_model=APIResponse)
+async def get_sensitive_event_options(event_id: str):
+    """获取高敏事件的处理选项"""
+    try:
+        options = hs_handler.get_handling_options(event_id)
+        return APIResponse(
+            success=True,
+            data=options
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/sensitive-events/{event_id}/process", response_model=APIResponse)
+async def process_sensitive_event(
+    event_id: str,
+    handling_mode: str = "soften",
+    profile_id: str = None
+):
+    """处理高敏事件"""
+    try:
+        mode = HandlingMode(handling_mode)
+        
+        # 获取角色状态（如果提供）
+        character_state = None
+        if profile_id:
+            profile = db_manager.get_profile(profile_id)
+            if profile:
+                class TempState:
+                    def __init__(self, data):
+                        self.age = data.get("age", 0)
+                        self.dimensions = data.get("dimensions", {})
+                character_state = TempState(profile.state or {})
+        
+        result = hs_handler.process_event(event_id, mode, character_state)
+        
+        return APIResponse(
+            success=result["success"],
+            data=result,
+            message=f"高敏事件处理完成"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/sensitive-events/list", response_model=APIResponse)
+async def list_sensitive_events():
+    """列出所有高敏事件"""
+    try:
+        events = []
+        for event_id, event in hs_handler.events.items():
+            events.append({
+                "id": event_id,
+                "type": event.event_type.value,
+                "level": event.sensitivity_level.value,
+                "title": event.title,
+                "description": event.description
+            })
+        
+        return APIResponse(
+            success=True,
+            data={
+                "events": events,
+                "total": len(events)
+            }
+        )
+    except Exception as e:
         return APIResponse(success=False, error=str(e))
 
 # 启动服务器
