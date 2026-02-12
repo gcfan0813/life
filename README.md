@@ -58,17 +58,17 @@ npm run preview
 # 安装后端依赖
 pip install -r backend/requirements.txt
 
-# 启动后端API服务
+# 启动后端API服务（统一使用simple_server.py）
 cd backend
-python main.py
+python simple_server.py
 
 # 或使用uvicorn启动
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+uvicorn simple_server:app --host 0.0.0.0 --port 8001 --reload
 ```
 
-### 完整开发流程（推荐）
+### 完整开发流程
 ```bash
-# 终端1：启动简化版后端服务（稳定）
+# 终端1：启动后端API服务
 cd backend && python simple_server.py
 
 # 终端2：启动前端开发服务器
@@ -84,6 +84,50 @@ npm run dev
 - ✅ **后端**：http://localhost:8001/ （简化版API）
 - ✅ **数据库**：SQLite（自动创建和管理）
 - ✅ **功能**：角色创建、事件推演、状态管理
+
+### 后端API接口（端口8001）
+
+#### 角色管理
+- `POST /api/profiles` - 创建新角色档案
+- `GET /api/profiles` - 获取所有角色列表
+
+#### 时间推进
+- `POST /api/profiles/{id}/advance` - 推进时间并生成新事件
+
+#### 事件处理
+- `GET /api/events/{profile_id}` - 获取角色事件列表
+- `POST /api/profiles/{id}/decisions` - 处理用户决策
+
+#### 系统信息
+- `GET /api/health` - 健康检查
+- `GET /api/data/exists` - 检查数据是否存在
+
+#### 请求/响应格式
+```typescript
+// 请求示例
+interface CreateProfileRequest {
+  name: string
+  gender: 'male' | 'female'
+  birthDate: string
+  birthLocation: string
+  familyBackground: string
+  initialPersonality: {
+    openness: number
+    conscientiousness: number
+    extraversion: number
+    agreeableness: number
+    neuroticism: number
+  }
+}
+
+// 响应格式
+interface APIResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+```
 
 ## 📁 项目结构
 
@@ -160,11 +204,13 @@ life/
 - AI事件生成器模板扩展（新增运动锻炼、恋爱关系、家庭建设等事件）
 - 五维系统数值平衡优化
 - 前端与后端通信集成（API服务层 + 本地服务层）
-- FastAPI后端服务搭建
+- FastAPI后端服务搭建（端口8001）
 - 前后端类型定义统一
 - 前端可视化界面完成（角色创建、时间轴、状态面板）
 - 后端API服务测试版（简化版服务已启动）
 - 前后端联调完成
+- **后端API接口完善**（角色创建、时间推进、事件处理、决策记录）
+- **前端与后端真实数据交互**（API调用、状态同步、错误处理）
 
 🔄 **进行中**
 - 后端服务稳定性优化
@@ -209,6 +255,15 @@ npm run lint
 
 ### Q: 如何重置数据？
 **A**: 删除 `life_simulation.db` 文件，系统会自动重建
+
+### Q: API返回错误怎么办？
+**A**: 检查后端服务是否运行：`cd backend && python simple_server.py`
+
+### Q: 前端显示异常？
+**A**: 打开浏览器控制台（F12）查看错误信息，检查网络请求
+
+### Q: 如何查看数据库内容？
+**A**: 使用SQLite工具打开 `life_simulation.db` 文件，查看profiles和events表
 
 ## 🤝 贡献指南
 

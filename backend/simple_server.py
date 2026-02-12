@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 """
-简化版后端API服务 - 用于前端功能测试
+简化版后端API服务 - 用于前端功能测试和降级方案
+
+⚠️ 重要说明：此文件是临时解决方案，绕过了核心引擎。
+完整功能需要使用完整后端（集成core/引擎模块）。
+
+功能限制：
+- 无500+学术验证规则
+- 无AI推演引擎
+- 无规则约束机制
+- 事件质量低下
+- 仅适合演示和测试
 """
 
 import json
@@ -238,6 +248,167 @@ async def get_events(profile_id: str):
         return APIResponse(success=True, data=events)
     except Exception as e:
         return APIResponse(success=False, error=str(e))
+
+@app.post("/api/profiles/{profile_id}/advance")
+async def advance_time(profile_id: str, request: Dict[str, Any]):
+    """推进时间"""
+    try:
+        days = request.get("days", 30)
+        
+        # 生成模拟事件
+        event_templates = [
+            {
+                "title": "工作机会",
+                "description": "你收到了一份新的工作邀请，薪资和职位都很有吸引力",
+                "choices": [
+                    {"text": "接受新工作", "impact": {"social.career.level": 1, "social.economic": 5000}},
+                    {"text": "继续留在现公司", "impact": {"social.socialCapital": 10}},
+                    {"text": "自己创业", "impact": {"social.economic": -10000, "psychological.openness": 5}}
+                ]
+            },
+            {
+                "title": "健康检查",
+                "description": "你决定进行一次全面的健康检查",
+                "choices": [
+                    {"text": "坚持运动锻炼", "impact": {"physical.health": 10, "physical.energy": 5}},
+                    {"text": "调整饮食结构", "impact": {"physical.health": 8, "physical.appearance": 3}},
+                    {"text": "忽视健康问题", "impact": {"physical.health": -5}}
+                ]
+            },
+            {
+                "title": "社交活动",
+                "description": "朋友邀请你参加一个社交聚会",
+                "choices": [
+                    {"text": "积极参加", "impact": {"social.socialCapital": 15, "psychological.extraversion": 3}},
+                    {"text": "婉言谢绝", "impact": {"psychological.neuroticism": -3}},
+                    {"text": "只参加熟悉的朋友聚会", "impact": {"relational.intimacy": 5}}
+                ]
+            }
+        ]
+        
+        # 随机选择事件模板
+        import random
+        template = random.choice(event_templates)
+        
+        event = {
+            "id": f"event_{datetime.now().timestamp()}",
+            "profileId": profile_id,
+            "title": template["title"],
+            "description": template["description"],
+            "choices": template["choices"],
+            "isCompleted": False,
+            "createdAt": datetime.now().isoformat()
+        }
+        
+        # 保存事件
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO events (id, profileId, title, description, choices, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            event["id"],
+            event["profileId"],
+            event["title"],
+            event["description"],
+            json.dumps(event["choices"]),
+            event["createdAt"]
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "events": [event],
+                "newDate": datetime.now().isoformat().split("T")[0],
+                "message": f"成功推进{days}天，生成新事件"
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/profiles/{profile_id}/decisions")
+async def make_decision(profile_id: str, request: Dict[str, Any]):
+    """处理决策"""
+    try:
+        event_id = request.get("eventId")
+        choice_index = request.get("choiceIndex", 0)
+        
+        # 获取事件
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, title, description, choices 
+            FROM events 
+            WHERE profileId = ? AND id = ?
+        """, (profile_id, event_id))
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return APIResponse(success=False, error="事件不存在")
+        
+        event = {
+            "id": row[0],
+            "title": row[1],
+            "description": row[2],
+            "choices": json.loads(row[3])
+        }
+        
+        # 检查选择索引
+        if choice_index >= len(event["choices"]):
+            conn.close()
+            return APIResponse(success=False, error="无效的选择")
+        
+        # 标记事件为已完成
+        cursor.execute("""
+            UPDATE events 
+            SET isCompleted = 1 
+            WHERE id = ?
+        """, (event_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "newState": {},  # 简化处理
+                "newMemories": [],
+                "immediateEffects": [],
+                "longTermEffects": [],
+                "message": "决策已记录"
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/data/exists")
+async def check_data():
+    """检查是否有数据"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COUNT(*) FROM profiles")
+        count = cursor.fetchone()[0]
+        conn.close()
+        
+        return APIResponse(success=True, data={"hasData": count > 0})
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/health")
+async def health():
+    """健康检查"""
+    return APIResponse(
+        success=True,
+        data={"status": "healthy", "version": "1.0.0", "timestamp": datetime.now().isoformat()}
+    )
 
 # 初始化数据库
 init_db()
