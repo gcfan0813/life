@@ -36,24 +36,12 @@ export interface MakeDecisionRequest {
 
 // API服务类
 export class APIService {
-  private baseURL: string = ''
-  private isLocalMode: boolean = true
-
-  constructor() {
-    // 检测是否在浏览器环境中
-    if (typeof window !== 'undefined') {
-      this.baseURL = window.location.origin
-      this.isLocalMode = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    }
-  }
+  private baseURL: string = 'http://localhost:8001' // 使用简化版后端服务
 
   // 通用请求方法
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<APIResponse<T>> {
     try {
-      // 如果是本地模式，使用Python后端
-      const url = this.isLocalMode 
-        ? `http://localhost:8000/api${endpoint}`
-        : `${this.baseURL}/api${endpoint}`
+      const url = `${this.baseURL}${endpoint}`
 
       const response = await fetch(url, {
         headers: {
