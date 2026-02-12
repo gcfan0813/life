@@ -102,14 +102,20 @@ class SimpleAIGenerator:
                 # 创建事件对象
                 event = type('GameEvent', (), {
                     'id': f"event_{int(datetime.now().timestamp())}_{random.randint(1000, 9999)}",
+                    'profile_id': 'demo_profile_001',
+                    'event_date': current_state.current_date,
+                    'event_type': 'life_event',
                     'title': template['title'],
                     'description': template['description'],
-                    'emotional_weight': template['emotional_weight'],
+                    'narrative': '',
                     'choices': template['choices'],
-                    'impacts': [],
-                    'plausibility': random.randint(70, 95),
+                    'impacts': [{'dimension': 'psychological', 'subDimension': 'happiness', 'change': random.randint(1, 5)}],
                     'is_completed': False,
-                    'selected_choice': None
+                    'selected_choice': None,
+                    'plausibility': random.randint(70, 95),
+                    'emotional_weight': template['emotional_weight'],
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat()
                 })()
                 
                 selected_events.append(event)

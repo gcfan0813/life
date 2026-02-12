@@ -231,8 +231,13 @@ class SimulationEngine:
                     dimension = parts[0]
                     sub_dimension = parts[1]
                     
-                    if dimension in new_state.dimensions:
-                        if sub_dimension in new_state.dimensions[dimension]:
+                    if (dimension in new_state.dimensions and 
+                        isinstance(new_state.dimensions[dimension], dict) and
+                        sub_dimension in new_state.dimensions[dimension]):
+                        
+                        current_value = new_state.dimensions[dimension][sub_dimension]
+                        # 只对数值类型进行运算
+                        if isinstance(current_value, (int, float)):
                             new_state.dimensions[dimension][sub_dimension] += change
         
         # 确保数值在合理范围内
