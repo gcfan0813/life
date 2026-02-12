@@ -6,6 +6,10 @@ import sqlite3
 import json
 import hashlib
 from datetime import datetime
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 import zlib

@@ -7,9 +7,38 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
-from ..shared.types import (
-    GameEvent, CharacterState, EventChoice
-)
+# 本地类型定义
+class GameEvent:
+    def __init__(self, id, profileId, eventDate, eventType, title, description, narrative, choices, impacts, isCompleted, plausibility, emotionalWeight, createdAt, updatedAt):
+        self.id = id
+        self.profileId = profileId
+        self.eventDate = eventDate
+        self.eventType = eventType
+        self.title = title
+        self.description = description
+        self.narrative = narrative
+        self.choices = choices
+        self.impacts = impacts
+        self.isCompleted = isCompleted
+        self.plausibility = plausibility
+        self.emotionalWeight = emotionalWeight
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+
+class CharacterState:
+    def __init__(self, profileId, currentDate, age, dimensions):
+        self.profileId = profileId
+        self.currentDate = currentDate
+        self.age = age
+        self.dimensions = dimensions
+
+class EventChoice:
+    def __init__(self, id, text, immediateImpacts, longTermEffects, riskLevel):
+        self.id = id
+        self.text = text
+        self.immediateImpacts = immediateImpacts
+        self.longTermEffects = longTermEffects
+        self.riskLevel = riskLevel
 
 # 临时类型定义
 class AIReasoningResult:
