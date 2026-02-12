@@ -1,0 +1,43 @@
+{
+  "name": "infinite-life",
+  "version": "1.0.0",
+  "description": "用户主权式AI推演人生模拟系统",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src --ext .ts,.tsx",
+    "type-check": "tsc --noEmit",
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "build:mobile": "react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.0",
+    "@tanstack/react-query": "^4.29.0",
+    "zustand": "^4.4.0",
+    "lucide-react": "^0.263.0",
+    "tailwindcss": "^3.3.0",
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "typescript": "^5.0.0",
+    "vite": "^4.3.0",
+    "@vitejs/plugin-react": "^4.0.0",
+    "vitest": "^0.29.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "eslint": "^8.36.0",
+    "@typescript-eslint/eslint-plugin": "^5.57.0",
+    "@typescript-eslint/parser": "^5.57.0",
+    "react-native": "^0.72.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "vite": "^4.3.0"
+  }
+}
