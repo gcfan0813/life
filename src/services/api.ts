@@ -442,6 +442,118 @@ export class APIService {
   }>> {
     return this.request('/sensitive-events/list')
   }
+
+  // ==================== 家族传承API ====================
+
+  // 创建家族
+  async createFamily(founderName: string, profileId: string): Promise<APIResponse<{
+    family_id: string
+    founder_name: string
+    total_members: number
+  }>> {
+    return this.request(`/families?founder_name=${encodeURIComponent(founderName)}&profile_id=${profileId}`, {
+      method: 'POST'
+    })
+  }
+
+  // 获取家族树
+  async getFamilyTree(familyId: string): Promise<APIResponse<{
+    family_id: string
+    founder_name: string
+    nodes: Array<{
+      id: string
+      name: string
+      gender: string
+      birth_year: number
+      death_year: number | null
+      generation: number
+      profile_id: string | null
+    }>
+    links: Array<{
+      source: string
+      target: string
+      type: string
+    }>
+    stats: Record<string, any>
+    legacies: Array<{
+      type: string
+      name: string
+      value: any
+      inherit_probability: number
+    }>
+  }>> {
+    return this.request(`/families/${familyId}`)
+  }
+
+  // 获取家族总结
+  async getFamilySummary(familyId: string): Promise<APIResponse<{
+    family_id: string
+    founder_name: string
+    total_generations: number
+    total_members: number
+    generation_details: Record<number, string[]>
+    family_reputation: number
+    notable_achievements: string[]
+  }>> {
+    return this.request(`/families/${familyId}/summary`)
+  }
+
+  // 添加子女
+  async addChildToFamily(
+    familyId: string,
+    parentProfileId: string,
+    childName: string,
+    childGender: string,
+    birthYear: number
+  ): Promise<APIResponse<{
+    id: string
+    name: string
+    gender: string
+    birthDate: string
+    family_id: string
+    generation: number
+    parent_profile_id: string
+    inheritance: Record<string, any>
+  }>> {
+    const url = `/families/${familyId}/children?parent_profile_id=${parentProfileId}&child_name=${encodeURIComponent(childName)}&child_gender=${childGender}&birth_year=${birthYear}`
+    return this.request(url, { method: 'POST' })
+  }
+
+  // 计算遗产继承
+  async calculateInheritance(familyId: string, childId: string): Promise<APIResponse<{
+    family_id: string
+    child_id: string
+    inheritance: Record<string, any>
+  }>> {
+    return this.request(`/families/${familyId}/inheritance/${childId}`)
+  }
+
+  // 获取角色遗产
+  async getProfileLegacy(profileId: string): Promise<APIResponse<{
+    material: {
+      wealth: number
+      assets: string[]
+    }
+    social: {
+      reputation: number
+      connections: number
+    }
+    cognitive: {
+      knowledge: number
+      skills: string[]
+    }
+    psychological: {
+      personality: Record<string, number>
+      values: string[]
+      wisdom: number
+    }
+    relational: {
+      family_bonds: number
+    }
+    achievements: Array<{ title: string; date: string }>
+  }>> {
+    return this.request(`/profiles/${profileId}/legacy`)
+  }
 }
 
 // 全局API服务实例

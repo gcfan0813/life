@@ -168,6 +168,20 @@ npm run dev
 - 心理创伤：抑郁、绝望时刻
 - 经济危机：破产、失业
 
+#### 家族传承系统
+- `POST /api/families` - 创建新家族
+- `GET /api/families/{id}` - 获取家族树
+- `GET /api/families/{id}/summary` - 获取家族总结
+- `POST /api/families/{id}/children` - 添加子女
+- `GET /api/families/{id}/inheritance/{child_id}` - 计算遗产继承
+- `GET /api/profiles/{id}/legacy` - 获取角色遗产
+
+**家族功能：**
+- 家族树结构 - 记录多代家族成员
+- 遗产传递 - 物质、社会、认知、心理遗产
+- 性格继承 - 基于父母的性格特征
+- 代际衰减 - 遗产随代际递减
+
 #### 系统信息
 - `GET /api/health` - 健康检查（显示引擎状态）
 - `GET /api/data/exists` - 检查数据是否存在

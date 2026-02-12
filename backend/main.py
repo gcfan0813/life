@@ -21,6 +21,7 @@ from core.engine.character import CharacterInitializer
 from core.engine.validator import RuleValidator, EraRules
 from core.engine.macro_events import macro_event_system, MacroEventType
 from core.engine.sensitive_events import hs_handler, SensitivityLevel, HandlingMode, HighSensitivityEventType
+from core.engine.family_legacy import family_system, FamilyRelation, LegacyType
 from core.storage.database import db_manager
 from shared.types import LifeProfile, CharacterState as PyCharacterState, GameEvent as PyGameEvent, Memory as PyMemory
 
@@ -1489,6 +1490,180 @@ async def list_sensitive_events():
             }
         )
     except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+# ==================== 家族传承API ====================
+
+@app.post("/api/families", response_model=APIResponse)
+async def create_family(founder_name: str, profile_id: str):
+    """创建新家族"""
+    try:
+        profile = db_manager.get_profile(profile_id)
+        if not profile:
+            return APIResponse(success=False, error="角色档案不存在")
+        
+        founder_profile = {
+            "gender": profile.gender,
+            "birth_year": datetime.strptime(profile.birth_date, "%Y-%m-%d").year if profile.birth_date else 2000,
+            "profile_id": profile_id,
+            "dimensions": profile.state.get("dimensions", {}) if profile.state else {},
+            "personality": profile.state.get("personality", {}) if profile.state else {}
+        }
+        
+        family = family_system.create_family(founder_name, founder_profile)
+        
+        return APIResponse(
+            success=True,
+            data={
+                "family_id": family.family_id,
+                "founder_name": family.founder_name,
+                "total_members": len(family.members)
+            },
+            message=f"家族 [{founder_name}家族] 创建成功"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/families/{family_id}", response_model=APIResponse)
+async def get_family_tree(family_id: str):
+    """获取家族树"""
+    try:
+        tree = family_system.get_family_tree(family_id)
+        if not tree:
+            return APIResponse(success=False, error="家族不存在")
+        
+        return APIResponse(
+            success=True,
+            data=tree
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/families/{family_id}/summary", response_model=APIResponse)
+async def get_family_summary(family_id: str):
+    """获取家族总结"""
+    try:
+        summary = family_system.get_family_summary(family_id)
+        if not summary:
+            return APIResponse(success=False, error="家族不存在")
+        
+        return APIResponse(
+            success=True,
+            data=summary
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/families/{family_id}/children", response_model=APIResponse)
+async def add_child_to_family(
+    family_id: str,
+    parent_profile_id: str,
+    child_name: str,
+    child_gender: str,
+    birth_year: int
+):
+    """添加子女到家族"""
+    try:
+        parent_profile = db_manager.get_profile(parent_profile_id)
+        if not parent_profile:
+            return APIResponse(success=False, error="父辈档案不存在")
+        
+        parent_data = {
+            "id": parent_profile_id,
+            "name": parent_profile.name,
+            "personality": parent_profile.state.get("personality", {}) if parent_profile.state else {},
+            "birthLocation": parent_profile.birth_location or "北京"
+        }
+        
+        new_profile = family_system.create_next_generation_profile(
+            family_id,
+            child_name,
+            child_gender,
+            birth_year,
+            parent_data
+        )
+        
+        if not new_profile:
+            return APIResponse(success=False, error="创建子女失败")
+        
+        return APIResponse(
+            success=True,
+            data=new_profile,
+            message=f"子女 [{child_name}] 添加成功"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/families/{family_id}/inheritance/{child_id}", response_model=APIResponse)
+async def calculate_inheritance(family_id: str, child_id: str):
+    """计算子女继承的遗产"""
+    try:
+        inheritance = family_system.calculate_inheritance(family_id, child_id)
+        
+        return APIResponse(
+            success=True,
+            data={
+                "family_id": family_id,
+                "child_id": child_id,
+                "inheritance": inheritance
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/profiles/{profile_id}/legacy", response_model=APIResponse)
+async def get_profile_legacy(profile_id: str):
+    """获取角色的遗产信息"""
+    try:
+        profile = db_manager.get_profile(profile_id)
+        if not profile:
+            return APIResponse(success=False, error="角色不存在")
+        
+        # 获取角色的人生总结作为遗产基础
+        events = db_manager.get_events(profile_id, limit=100)
+        
+        # 计算遗产
+        legacy = {
+            "material": {
+                "wealth": profile.state.get("dimensions", {}).get("social", {}).get("economic", 50) if profile.state else 50,
+                "assets": []
+            },
+            "social": {
+                "reputation": 50,
+                "connections": 0
+            },
+            "cognitive": {
+                "knowledge": profile.state.get("dimensions", {}).get("cognitive", {}).get("knowledge", 50) if profile.state else 50,
+                "skills": []
+            },
+            "psychological": {
+                "personality": profile.state.get("personality", {}) if profile.state else {},
+                "values": [],
+                "wisdom": len([e for e in events if e.is_completed])
+            },
+            "relational": {
+                "family_bonds": profile.state.get("dimensions", {}).get("relational", {}).get("family", 50) if profile.state else 50
+            }
+        }
+        
+        # 添加重要事件作为成就
+        notable_events = [e for e in events if e.emotional_weight and e.emotional_weight > 0.7]
+        legacy["achievements"] = [
+            {"title": e.title, "date": e.event_date}
+            for e in notable_events[:10]
+        ]
+        
+        return APIResponse(
+            success=True,
+            data=legacy
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return APIResponse(success=False, error=str(e))
 
 # 启动服务器
