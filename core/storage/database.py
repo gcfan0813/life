@@ -11,9 +11,69 @@ from pathlib import Path
 import zlib
 import pickle
 
-from ..shared.types import (
-    LifeProfile, CharacterState, GameEvent, Memory
-)
+from typing import List, Dict, Optional, Any
+import json
+from datetime import datetime
+
+# 临时类型定义
+class LifeProfile:
+    def __init__(self, id, name, birth_date, birth_place, gender, initial_traits, era, difficulty, created_at, updated_at):
+        self.id = id
+        self.name = name
+        self.birth_date = birth_date
+        self.birth_place = birth_place
+        self.gender = gender
+        self.initial_traits = initial_traits
+        self.era = era
+        self.difficulty = difficulty
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+class CharacterState:
+    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
+        self.id = id
+        self.profile_id = profile_id
+        self.current_date = current_date
+        self.age = age
+        self.dimensions = dimensions
+        self.location = location
+        self.occupation = occupation
+        self.education = education
+        self.life_stage = life_stage
+        self.total_events = total_events
+        self.total_decisions = total_decisions
+        self.days_survived = days_survived
+
+class GameEvent:
+    def __init__(self, id, profile_id, event_date, event_type, title, description, narrative, choices, impacts, is_completed, selected_choice, plausibility, emotional_weight, created_at, updated_at):
+        self.id = id
+        self.profile_id = profile_id
+        self.event_date = event_date
+        self.event_type = event_type
+        self.title = title
+        self.description = description
+        self.narrative = narrative
+        self.choices = choices
+        self.impacts = impacts
+        self.is_completed = is_completed
+        self.selected_choice = selected_choice
+        self.plausibility = plausibility
+        self.emotional_weight = emotional_weight
+        self.created_at = created_at
+        self.updated_at = updated_at
+
+class Memory:
+    def __init__(self, id, profile_id, event_id, summary, emotional_weight, recall_count, last_recalled, retention, created_at, updated_at):
+        self.id = id
+        self.profile_id = profile_id
+        self.event_id = event_id
+        self.summary = summary
+        self.emotional_weight = emotional_weight
+        self.recall_count = recall_count
+        self.last_recalled = last_recalled
+        self.retention = retention
+        self.created_at = created_at
+        self.updated_at = updated_at
 
 # 临时类型定义
 class FiveDimensions:

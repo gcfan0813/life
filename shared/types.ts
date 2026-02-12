@@ -75,8 +75,8 @@ export interface FiveDimensionSystem {
 // 角色状态
 export interface CharacterState {
   id: string;
-  profileId: string;
-  currentDate: string; // YYYY-MM-DD
+  profile_id: string;
+  current_date: string; // YYYY-MM-DD
   age: number;
   dimensions: FiveDimensionSystem;
   
@@ -86,43 +86,39 @@ export interface CharacterState {
   education: string;
   
   // 时间相关
-  lifeStage: 'childhood' | 'teen' | 'youngAdult' | 'adult' | 'middleAge' | 'senior';
+  life_stage: 'childhood' | 'teen' | 'youngAdult' | 'adult' | 'middleAge' | 'senior';
   
   // 统计信息
-  totalEvents: number;
-  totalDecisions: number;
-  daysSurvived: number;
+  total_events: number;
+  total_decisions: number;
+  days_survived: number;
 }
 
 // 游戏事件
 export interface GameEvent {
   id: string;
-  profileId: string;
-  eventDate: string;
-  eventType: 'milestone' | 'crisis' | 'opportunity' | 'relationship' | 'daily';
+  profile_id: string;
+  event_date: string;
+  event_type: 'milestone' | 'crisis' | 'opportunity' | 'relationship' | 'daily';
   title: string;
   description: string;
-  narrative?: string; // 详细叙事
+  narrative: string;
   
   // 事件属性
   plausibility: number; // 可信度 (0-100)
-  emotionalWeight: number; // 情感权重 (0-1)
-  urgency: number; // 紧急程度 (0-100)
+  emotional_weight: number; // 情感权重 (0-1)
   
   // 影响
-  impacts: Array<{
-    dimension: keyof FiveDimensionSystem;
-    subDimension: string;
-    change: number;
-  }>;
+  impacts: any[];
   
   // 选择项
   choices: EventChoice[];
   
   // 状态
-  isCompleted: boolean;
-  selectedChoice?: number;
-  createdAt: string;
+  is_completed: boolean;
+  selected_choice?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // 事件选择项
@@ -149,51 +145,35 @@ export interface EventChoice {
 export interface LifeProfile {
   id: string;
   name: string;
+  birth_date: string; // YYYY-MM-DD
+  birth_place: string;
   gender: 'male' | 'female';
-  birthDate: string; // YYYY-MM-DD
-  birthLocation: string;
-  
-  // 初始属性
-  initialConditions: {
+  initial_traits: {
     familyBackground: 'poor' | 'middle' | 'wealthy';
     educationLevel: 'none' | 'primary' | 'secondary' | 'college' | 'graduate';
     healthStatus: 'poor' | 'average' | 'good' | 'excellent';
-  };
-  
-  // 个性特征
-  personalityTraits: {
     riskTolerance: number; // 风险承受度 (0-100)
     ambition: number; // 野心 (0-100)
     empathy: number; // 同理心 (0-100)
   };
-  
-  // 系统信息
-  createdAt: string;
-  lastPlayed: string;
-  totalPlayTime: number; // 分钟
+  era: string;
+  difficulty: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // 记忆
 export interface Memory {
   id: string;
-  profileId: string;
-  eventId: string;
-  memoryDate: string;
-  
-  // 记忆内容
-  title: string;
-  content: string;
-  emotionalIntensity: number; // 情感强度 (0-100)
-  
-  // 记忆属性
-  clarity: number; // 清晰度 (0-100)
-  importance: number; // 重要性 (0-100)
-  category: 'personal' | 'work' | 'relationship' | 'milestone';
-  
-  // 艾宾浩斯遗忘曲线
-  retention: number; // 保留率 (0-100)
-  lastReviewed: string;
-  nextReview: string;
+  profile_id: string;
+  event_id: string;
+  summary: string;
+  emotional_weight: number;
+  recall_count: number;
+  last_recalled: string | null;
+  retention: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // AI设置
