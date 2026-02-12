@@ -72,20 +72,94 @@ class RuleValidator:
     def _load_rules(self):
         """加载规则库"""
         try:
-            # 从JSON文件加载规则
-            rules_file = "shared/rules/base_rules.json"
-            with open(rules_file, 'r', encoding='utf-8') as f:
+            # 尝试加载全面规则库
+            comprehensive_file = "shared/rules/comprehensive_rules.json"
+            base_file = "shared/rules/base_rules.json"
+            extended_file = "shared/rules/extended_rules.json"
+            
+            total_rules = 0
+            self.rules_cache = {}
+            
+            # 加载全面规则库
+            try:
+                with open(comprehensive_file, 'r', encoding='utf-8') as f:
+                    comprehensive_data = json.load(f)
+                
+                # 解析全面规则库结构
+                categories = comprehensive_data.get('categories', {})
+                for cat_name, cat_data in categories.items():
+                    if cat_name not in self.rules_cache:
+                        self.rules_cache[cat_name] = []
+                    
+                    # 处理子类别
+                    if 'subcategories' in cat_data:
+                        for subcat_name, subcat_data in cat_data['subcategories'].items():
+                            rules = subcat_data.get('rules', [])
+                            for rule in rules:
+                                rule['category'] = cat_name
+                                rule['subcategory'] = subcat_name
+                                self.rules_cache[cat_name].append(rule)
+                                total_rules += 1
+                    elif 'rules' in cat_data:
+                        rules = cat_data['rules']
+                        for rule in rules:
+                            rule['category'] = cat_name
+                            self.rules_cache[cat_name].append(rule)
+                            total_rules += 1
+                
+                # 加载元规则
+                meta_rules = comprehensive_data.get('meta_rules', {})
+                if meta_rules:
+                    self.rules_cache['meta'] = meta_rules.get('rules', [])
+                    total_rules += len(self.rules_cache['meta'])
+                
+                # 加载特殊条件规则
+                special_rules = comprehensive_data.get('special_conditions', {})
+                if special_rules:
+                    self.rules_cache['special'] = special_rules.get('rules', [])
+                    total_rules += len(self.rules_cache['special'])
+                
+                print(f"[OK] 成功加载 {total_rules} 条规则 (全面规则库)")
+                return
+                
+            except FileNotFoundError:
+                pass
+            
+            # 回退到基础规则库
+            with open(base_file, 'r', encoding='utf-8') as f:
                 rules_data = json.load(f)
             
-            # 按类别组织规则
-            self.rules_cache = {}
             for rule in rules_data.get('rules', []):
                 category = rule.get('category', 'other')
                 if category not in self.rules_cache:
                     self.rules_cache[category] = []
                 self.rules_cache[category].append(rule)
+                total_rules += 1
+            
+            # 加载扩展规则库
+            try:
+                with open(extended_file, 'r', encoding='utf-8') as f:
+                    extended_data = json.load(f)
                 
-            print(f"[OK] 成功加载 {len(rules_data.get('rules', []))} 条规则")
+                categories = extended_data.get('categories', {})
+                for cat_name, cat_data in categories.items():
+                    if cat_name not in self.rules_cache:
+                        self.rules_cache[cat_name] = []
+                    for rule in cat_data.get('rules', []):
+                        rule['category'] = cat_name
+                        self.rules_cache[cat_name].append(rule)
+                        total_rules += 1
+                
+                # 元规则
+                for rule in extended_data.get('meta_rules', []):
+                    if 'meta' not in self.rules_cache:
+                        self.rules_cache['meta'] = []
+                    self.rules_cache['meta'].append(rule)
+                    total_rules += 1
+            except FileNotFoundError:
+                pass
+                
+            print(f"[OK] 成功加载 {total_rules} 条规则")
             
         except Exception as e:
             print(f"[WARN] 规则加载失败，使用默认规则: {e}")

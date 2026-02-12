@@ -1666,6 +1666,242 @@ async def get_profile_legacy(profile_id: str):
         traceback.print_exc()
         return APIResponse(success=False, error=str(e))
 
+# ==================== 规则管理API ====================
+from core.engine.rule_conflict import conflict_detector, RuleConflict
+from core.engine.dynamic_rules import dynamic_rule_manager, RuleStatus, UpdateType
+
+class AddRuleRequest(BaseModel):
+    rule: Dict[str, Any]
+    category: str
+    reason: str = ""
+
+class ModifyRuleRequest(BaseModel):
+    updates: Dict[str, Any]
+    reason: str = ""
+
+@app.get("/api/rules")
+async def get_rules():
+    """获取所有活跃规则"""
+    try:
+        active_rules = dynamic_rule_manager.get_active_rules()
+        stats = dynamic_rule_manager.get_statistics()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "rules": active_rules,
+                "statistics": stats
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/rules/{rule_id}")
+async def get_rule(rule_id: str):
+    """获取特定规则"""
+    try:
+        rule = dynamic_rule_manager.get_rule(rule_id)
+        if not rule:
+            return APIResponse(success=False, error="规则不存在")
+        
+        return APIResponse(success=True, data=rule)
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules")
+async def add_rule(request: AddRuleRequest):
+    """添加新规则"""
+    try:
+        success = dynamic_rule_manager.add_rule(
+            rule=request.rule,
+            category=request.category,
+            reason=request.reason
+        )
+        
+        if success:
+            return APIResponse(
+                success=True,
+                message=f"规则 {request.rule.get('id')} 已添加",
+                data={"rule_id": request.rule.get('id')}
+            )
+        else:
+            return APIResponse(success=False, error="添加规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.put("/api/rules/{rule_id}")
+async def modify_rule(rule_id: str, request: ModifyRuleRequest):
+    """修改规则"""
+    try:
+        success = dynamic_rule_manager.modify_rule(
+            rule_id=rule_id,
+            updates=request.updates,
+            reason=request.reason
+        )
+        
+        if success:
+            return APIResponse(
+                success=True,
+                message=f"规则 {rule_id} 已修改"
+            )
+        else:
+            return APIResponse(success=False, error="修改规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.delete("/api/rules/{rule_id}")
+async def delete_rule(rule_id: str, reason: str = ""):
+    """删除规则"""
+    try:
+        success = dynamic_rule_manager.delete_rule(
+            rule_id=rule_id,
+            reason=reason
+        )
+        
+        if success:
+            return APIResponse(
+                success=True,
+                message=f"规则 {rule_id} 已删除"
+            )
+        else:
+            return APIResponse(success=False, error="删除规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules/{rule_id}/disable")
+async def disable_rule(rule_id: str, reason: str = ""):
+    """禁用规则"""
+    try:
+        success = dynamic_rule_manager.disable_rule(
+            rule_id=rule_id,
+            reason=reason
+        )
+        
+        if success:
+            return APIResponse(
+                success=True,
+                message=f"规则 {rule_id} 已禁用"
+            )
+        else:
+            return APIResponse(success=False, error="禁用规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules/{rule_id}/enable")
+async def enable_rule(rule_id: str, reason: str = ""):
+    """启用规则"""
+    try:
+        success = dynamic_rule_manager.enable_rule(
+            rule_id=rule_id,
+            reason=reason
+        )
+        
+        if success:
+            return APIResponse(
+                success=True,
+                message=f"规则 {rule_id} 已启用"
+            )
+        else:
+            return APIResponse(success=False, error="启用规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/rules/conflicts")
+async def get_rule_conflicts():
+    """检测规则冲突"""
+    try:
+        # 更新冲突检测器的规则
+        conflict_detector.load_rules(dynamic_rule_manager.get_active_rules())
+        conflicts = conflict_detector.detect_all_conflicts()
+        stats = conflict_detector.get_conflict_statistics()
+        
+        return APIResponse(
+            success=True,
+            data={
+                "conflicts": [
+                    {
+                        "rule1_id": c.rule1_id,
+                        "rule2_id": c.rule2_id,
+                        "type": c.conflict_type.value,
+                        "severity": c.severity.value,
+                        "description": c.description,
+                        "suggestion": c.resolution_suggestion,
+                        "auto_resolvable": c.auto_resolvable
+                    }
+                    for c in conflicts
+                ],
+                "statistics": stats
+            }
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules/conflicts/{rule1_id}/{rule2_id}/resolve")
+async def resolve_conflict(rule1_id: str, rule2_id: str):
+    """解决规则冲突"""
+    try:
+        # 找到冲突
+        conflict_detector.load_rules(dynamic_rule_manager.get_active_rules())
+        conflicts = conflict_detector.detect_all_conflicts()
+        
+        target_conflict = None
+        for c in conflicts:
+            if (c.rule1_id == rule1_id and c.rule2_id == rule2_id) or \
+               (c.rule1_id == rule2_id and c.rule2_id == rule1_id):
+                target_conflict = c
+                break
+        
+        if not target_conflict:
+            return APIResponse(success=False, error="未找到指定冲突")
+        
+        # 解决冲突
+        result = conflict_detector.resolve_conflict(target_conflict)
+        
+        # 如果自动禁用了规则，更新动态规则管理器
+        if result.get('resolved') and result.get('action') == 'disable':
+            dynamic_rule_manager.disable_rule(
+                result['rule_id'],
+                reason=result.get('reason', '')
+            )
+        
+        return APIResponse(
+            success=result.get('resolved', False),
+            data=result,
+            message=result.get('reason', '')
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/rules/statistics")
+async def get_rule_statistics():
+    """获取规则统计信息"""
+    try:
+        stats = dynamic_rule_manager.get_statistics()
+        return APIResponse(success=True, data=stats)
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules/save")
+async def save_rules():
+    """保存规则到文件"""
+    try:
+        success = dynamic_rule_manager.save_rules()
+        if success:
+            return APIResponse(success=True, message="规则已保存")
+        else:
+            return APIResponse(success=False, error="保存规则失败")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/rules/reload")
+async def reload_rules():
+    """重新加载规则"""
+    try:
+        dynamic_rule_manager._load_rules()
+        return APIResponse(success=True, message="规则已重新加载")
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
 # 启动服务器
 if __name__ == "__main__":
     import uvicorn

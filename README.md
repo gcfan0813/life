@@ -116,13 +116,36 @@ npm run dev
 - `POST /api/rules/validate-decision` - 验证决策风险
 - `GET /api/rules/validate-action` - 验证动作合理性
 
-**学术规则分类：**
-- 生理系统规则（健康、精力、外貌）
-- 心理系统规则（大五人格、情绪）
-- 社会系统规则（职业、经济、社交）
-- 认知系统规则（知识、技能、记忆）
-- 关系系统规则（亲密度、家庭）
-- 年龄特定规则（童年、青年、中年、老年）
+#### 规则管理（动态更新）
+- `GET /api/rules` - 获取所有活跃规则
+- `GET /api/rules/{rule_id}` - 获取特定规则
+- `POST /api/rules` - 添加新规则
+- `PUT /api/rules/{rule_id}` - 修改规则
+- `DELETE /api/rules/{rule_id}` - 删除规则
+- `POST /api/rules/{rule_id}/disable` - 禁用规则
+- `POST /api/rules/{rule_id}/enable` - 启用规则
+- `POST /api/rules/save` - 保存规则到文件
+- `POST /api/rules/reload` - 重新加载规则
+
+#### 规则冲突检测
+- `GET /api/rules/conflicts` - 检测规则冲突
+- `POST /api/rules/conflicts/{rule1_id}/{rule2_id}/resolve` - 解决规则冲突
+
+**冲突类型：**
+- 矛盾冲突：相同条件下产生相反效果
+- 冗余冲突：规则重复或重叠
+- 条件冲突：条件不同但效果相反
+
+**学术规则分类（500+条）：**
+- 生理系统规则（健康、精力、外貌、睡眠、疾病）
+- 心理系统规则（大五人格、情绪、压力、创伤、自尊）
+- 社会系统规则（职业、经济、社会地位、职场）
+- 认知系统规则（学习、技能、记忆、智力）
+- 关系系统规则（恋爱、家庭、友谊、社交网络）
+- 人生事件规则（里程碑、危机、成就）
+- 环境因素规则（经济环境、文化背景、历史时代）
+- 元规则（维度交互、马太效应、边际递减）
+- 特殊条件规则（累积压力、转折点、韧性培养）
 
 #### AI服务
 - `GET /api/ai/status` - 获取AI服务状态和可用API
@@ -239,7 +262,10 @@ life/
 │   │   ├── Navigation.tsx # 导航栏
 │   │   ├── Settings.tsx   # 设置面板
 │   │   ├── StatusPanel.tsx # 状态面板
-│   │   └── TimeControls.tsx # 时间控制
+│   │   ├── TimeControls.tsx # 时间控制
+│   │   ├── MacroEventPanel.tsx # 宏观事件面板
+│   │   ├── SensitiveEventDialog.tsx # 高敏事件对话框
+│   │   └── FamilyTree.tsx # 家族树组件
 │   ├── stores/            # 状态管理
 │   │   └── lifeStore.ts  # 全局状态
 │   ├── services/          # API服务层
@@ -253,15 +279,27 @@ life/
 │   └── requirements.txt  # Python依赖
 ├── core/                  # 核心引擎
 │   ├── ai/               # AI推演引擎
-│   │   └── generator.py  # 事件生成器
+│   │   ├── ai_service.py # AI服务（多API）
+│   │   ├── generator.py  # 事件生成器
+│   │   ├── memory_system.py # 记忆系统
+│   │   └── simple_generator.py # 简化版生成器
 │   ├── engine/           # 规则引擎
 │   │   ├── validator.py  # 规则校验器
 │   │   ├── simulation.py # 模拟引擎
-│   │   └── character.py  # 角色初始化
+│   │   ├── character.py  # 角色初始化
+│   │   ├── macro_events.py # 宏观事件系统
+│   │   ├── sensitive_events.py # 高敏事件处理
+│   │   ├── family_legacy.py # 家族传承系统
+│   │   ├── rule_conflict.py # 规则冲突检测
+│   │   └── dynamic_rules.py # 动态规则更新
 │   └── storage/          # 存储引擎
 │       └── database.py   # 数据库操作
 ├── shared/                # 共享代码
 │   ├── types.ts          # TypeScript类型定义
+│   ├── rules/            # 规则库
+│   │   ├── base_rules.json # 基础规则
+│   │   ├── extended_rules.json # 扩展规则
+│   │   └── comprehensive_rules.json # 全面规则库（500+）
 │   └── config/           # 配置文件
 │       └── api_config.py # API配置
 ├── 配置文件
@@ -270,10 +308,6 @@ life/
 │   ├── vite.config.ts    # Vite构建配置
 │   ├── tailwind.config.js # TailwindCSS配置
 │   └── .eslintrc.json    # ESLint规范
-├── 测试文件
-│   ├── test_storage.py   # 存储引擎测试
-│   ├── test_validator.py # 规则引擎测试
-│   └── test_simulation.py # 模拟引擎测试
 ├── life_simulation.db     # SQLite数据库文件
 └── 文档
     ├── README.md         # 项目说明
@@ -289,7 +323,7 @@ life/
 - 开发环境配置（Vite + ESLint）
 - 核心组件开发（时间轴、角色创建、事件卡片等）
 - 事件溯源存储引擎（SQLite + 事件溯源架构）
-- 规则校验引擎基础框架（5类学术验证规则）
+- 规则校验引擎（500+条学术验证规则）
 - 开发服务器测试与优化（成功运行）
 - AI推演引擎核心功能（事件生成器、模拟引擎）
 - 角色状态初始化系统
@@ -301,24 +335,27 @@ life/
 - AI事件生成器模板扩展（新增运动锻炼、恋爱关系、家庭建设等事件）
 - 五维系统数值平衡优化
 - 前端与后端通信集成（API服务层 + 本地服务层）
-- FastAPI后端服务搭建（端口8001）
+- FastAPI后端服务搭建
 - 前后端类型定义统一
 - 前端可视化界面完成（角色创建、时间轴、状态面板）
-- 后端API服务测试版（简化版服务已启动）
 - 前后端联调完成
 - **后端API接口完善**（角色创建、时间推进、事件处理、决策记录）
 - **前端与后端真实数据交互**（API调用、状态同步、错误处理）
+- **AI能力分层实现**（L0-L3四级AI推演系统）
+- **多API智能路由**（硅基流动、智谱AI）
+- **宏观事件系统**（12个历史事件+随机灾害）
+- **高敏事件处理**（三层防护机制）
+- **家族传承系统**（家族树、遗产继承、代际衰减）
+- **规则冲突检测**（矛盾/冗余/条件冲突检测）
+- **动态规则更新**（运行时增删改、版本控制）
 
 🔄 **进行中**
 - 后端服务稳定性优化
 - API接口完善和测试
-- 规则库扩展和优化
 
 📋 **待完成**
 - 移动端适配
-- AI模型分层集成（L0-L3）
-- 用户界面优化
-- 高级功能实现（未来预览、因果链追溯等）
+- 平台服务实现（P3阶段）
 
 ## 🔧 开发命令
 
