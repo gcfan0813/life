@@ -6,7 +6,8 @@ import StatusPanel from './StatusPanel'
 import TimeControls from './TimeControls'
 import FuturePreview from './FuturePreview'
 import CausalityChain from './CausalityChain'
-import { Play, Pause, SkipForward, RotateCcw, Eye, GitBranch } from 'lucide-react'
+import MacroEventPanel from './MacroEventPanel'
+import { Play, Pause, SkipForward, RotateCcw, Eye, GitBranch, Globe } from 'lucide-react'
 
 const LifeTimeline: React.FC = () => {
   const { 
@@ -23,6 +24,12 @@ const LifeTimeline: React.FC = () => {
   const [autoAdvance, setAutoAdvance] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [showCausality, setShowCausality] = useState(false)
+  const [showMacroEvents, setShowMacroEvents] = useState(false)
+
+  // 获取当前年份
+  const currentYear = currentState?.currentDate 
+    ? new Date(currentState.currentDate).getFullYear() 
+    : 2000
 
   // 获取待处理的事件
   const pendingEvents = events.filter(event => !event.isCompleted)
@@ -160,6 +167,18 @@ const LifeTimeline: React.FC = () => {
           >
             <GitBranch size={20} />
           </button>
+          
+          <button
+            onClick={() => setShowMacroEvents(!showMacroEvents)}
+            className={`p-2 rounded-full ${
+              showMacroEvents 
+                ? 'bg-slate-200 text-slate-700' 
+                : 'bg-gray-100 text-gray-600'
+            } hover:opacity-80 transition-opacity`}
+            title="宏观事件"
+          >
+            <Globe size={20} />
+          </button>
         </div>
       </div>
 
@@ -174,6 +193,13 @@ const LifeTimeline: React.FC = () => {
       {showCausality && currentProfile && (
         <div className="mb-6">
           <CausalityChain profileId={currentProfile.id} />
+        </div>
+      )}
+
+      {/* 宏观事件面板 */}
+      {showMacroEvents && currentProfile && (
+        <div className="mb-6">
+          <MacroEventPanel profileId={currentProfile.id} currentYear={currentYear} />
         </div>
       )}
 

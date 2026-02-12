@@ -315,6 +315,59 @@ export class APIService {
       body: JSON.stringify(decisionData)
     })
   }
+
+  // ==================== 宏观事件API ====================
+
+  // 获取宏观事件列表
+  async getMacroEvents(year: number): Promise<APIResponse<{
+    year: number
+    events: Array<{
+      id: string
+      name: string
+      type: string
+      yearRange: [number, number]
+      description: string
+      probability: number
+    }>
+    total: number
+  }>> {
+    return this.request(`/macro-events?year=${year}`)
+  }
+
+  // 获取宏观事件类型
+  async getMacroEventTypes(): Promise<APIResponse<{
+    types: Array<{ value: string; label: string }>
+  }>> {
+    return this.request('/macro-events/types')
+  }
+
+  // 检查角色宏观事件
+  async checkMacroEvents(profileId: string, year: number): Promise<APIResponse<{
+    year: number
+    triggeredEvents: Array<{
+      affected: boolean
+      event_name: string
+      impacts: Record<string, any>
+      narrative: string
+    }>
+    total: number
+  }>> {
+    return this.request(`/profiles/${profileId}/check-macro-events?year=${year}`, {
+      method: 'POST'
+    })
+  }
+
+  // 触发宏观事件
+  async triggerMacroEvent(profileId: string, eventId: string): Promise<APIResponse<{
+    affected: boolean
+    event_name: string
+    impacts: Record<string, any>
+    narrative: string
+  }>> {
+    return this.request(`/profiles/${profileId}/trigger-macro-event?event_id=${eventId}`, {
+      method: 'POST'
+    })
+  }
 }
 
 // 全局API服务实例

@@ -132,8 +132,22 @@ npm run dev
 **AI推演级别：**
 - L0: 本地规则引擎（免费）
 - L1: 模板生成（免费）
-- L2: 免费API（硅基流动等）
+- L2: 免费API（硅基流动、智谱等）
 - L3: 高级API（更智能）
+
+#### 宏观事件系统
+- `GET /api/macro-events?year=2024` - 获取指定年份可能的宏观事件
+- `GET /api/macro-events/types` - 获取宏观事件类型列表
+- `POST /api/profiles/{id}/check-macro-events?year=2024` - 检查角色宏观事件
+- `POST /api/profiles/{id}/trigger-macro-event?event_id=xxx` - 触发指定宏观事件
+
+**宏观事件类型：**
+- 经济事件：金融危机、贸易摩擦
+- 疫情：非典、新冠
+- 政策变化：改革开放、调控政策
+- 科技革命：互联网、AI革命
+- 自然灾害：地震、洪涝
+- 社会变革：教育改革、医疗改革
 
 #### 系统信息
 - `GET /api/health` - 健康检查（显示引擎状态）

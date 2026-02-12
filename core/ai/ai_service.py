@@ -215,8 +215,48 @@ class AIService:
     
     async def _call_zhipu(self, state: Any, num_events: int) -> Dict[str, Any]:
         """调用智谱AI API"""
-        # 类似实现
-        raise Exception("智谱AI暂未配置")
+        import aiohttp
+        
+        age = getattr(state, 'age', 25)
+        life_stage = getattr(state, 'life_stage', '青年')
+        
+        prompt = f"""请为以下角色生成{num_events}个人生事件：
+- 年龄：{age}岁
+- 人生阶段：{life_stage}
+- 当前状态：{state.dimensions if hasattr(state, 'dimensions') else '正常'}
+
+请生成JSON格式的事件列表，包含：title, description, eventType, choices, impacts"""
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {self.api_keys["zhipu"]}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    "model": "glm-4-flash",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 1000
+                }
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    content = data['choices'][0]['message']['content']
+                    try:
+                        events = json.loads(content)
+                        return {
+                            "events": events if isinstance(events, list) else [events],
+                            "reasoning": "智谱AI智能生成",
+                            "confidence": 0.93,
+                            "level": "L2_FREE_API",
+                            "provider": "zhipu",
+                            "cost": 0.0005
+                        }
+                    except:
+                        pass
+        
+        raise Exception("智谱AI响应解析失败")
     
     def _get_event_templates(self, age: int, life_stage: str) -> List[Dict]:
         """获取事件模板"""

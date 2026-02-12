@@ -19,6 +19,7 @@ sys.path.insert(0, project_root)
 from core.engine.simulation import simulation_engine, CharacterState, GameEvent, Memory, SimulationResult
 from core.engine.character import CharacterInitializer
 from core.engine.validator import RuleValidator, EraRules
+from core.engine.macro_events import macro_event_system, MacroEventType
 from core.storage.database import db_manager
 from shared.types import LifeProfile, CharacterState as PyCharacterState, GameEvent as PyGameEvent, Memory as PyMemory
 
@@ -1245,6 +1246,134 @@ async def get_full_causality_chain(profile_id: str):
         import traceback
         traceback.print_exc()
         return APIResponse(success=False, error=f"获取因果链失败: {str(e)}")
+
+# ==================== 宏观事件API ====================
+
+@app.get("/api/macro-events", response_model=APIResponse)
+async def get_macro_events(year: int = 2024):
+    """获取指定年份可能发生的宏观事件"""
+    try:
+        events = macro_event_system.get_active_events(year)
+        event_list = []
+        for event in events:
+            event_list.append({
+                "id": event.event_id,
+                "name": event.name,
+                "type": event.event_type.value,
+                "yearRange": event.year_range,
+                "description": event.description,
+                "probability": event.probability
+            })
+        
+        return APIResponse(
+            success=True,
+            data={
+                "year": year,
+                "events": event_list,
+                "total": len(event_list)
+            },
+            message=f"找到{len(event_list)}个可能的宏观事件"
+        )
+    except Exception as e:
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/api/macro-events/types", response_model=APIResponse)
+async def get_macro_event_types():
+    """获取宏观事件类型列表"""
+    return APIResponse(
+        success=True,
+        data={
+            "types": [
+                {"value": "economic", "label": "经济事件"},
+                {"value": "pandemic", "label": "疫情"},
+                {"value": "policy", "label": "政策变化"},
+                {"value": "technology", "label": "科技革命"},
+                {"value": "natural_disaster", "label": "自然灾害"},
+                {"value": "social", "label": "社会变革"}
+            ]
+        }
+    )
+
+@app.post("/api/profiles/{profile_id}/check-macro-events", response_model=APIResponse)
+async def check_profile_macro_events(profile_id: str, year: int):
+    """检查角色在指定年份的宏观事件影响"""
+    try:
+        profile = db_manager.get_profile(profile_id)
+        if not profile:
+            return APIResponse(success=False, error="角色不存在")
+        
+        # 获取角色状态
+        state_data = profile.state or {}
+        
+        # 创建临时状态对象
+        class TempState:
+            def __init__(self, data):
+                self.age = data.get("age", 0)
+                self.dimensions = data.get("dimensions", {})
+        
+        state = TempState(state_data)
+        
+        # 检查宏观事件
+        triggered_events = macro_event_system.check_macro_events(year, state)
+        
+        return APIResponse(
+            success=True,
+            data={
+                "year": year,
+                "triggeredEvents": triggered_events,
+                "total": len(triggered_events)
+            },
+            message=f"检查完成，{len(triggered_events)}个宏观事件被触发"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/api/profiles/{profile_id}/trigger-macro-event", response_model=APIResponse)
+async def trigger_macro_event(profile_id: str, event_id: str):
+    """手动触发指定宏观事件"""
+    try:
+        profile = db_manager.get_profile(profile_id)
+        if not profile:
+            return APIResponse(success=False, error="角色不存在")
+        
+        state_data = profile.state or {}
+        
+        class TempState:
+            def __init__(self, data):
+                self.age = data.get("age", 0)
+                self.dimensions = data.get("dimensions", {})
+        
+        state = TempState(state_data)
+        
+        result = macro_event_system.force_trigger_event(event_id, state)
+        
+        if not result:
+            return APIResponse(success=False, error="事件不存在或角色不受影响")
+        
+        # 应用影响到角色状态
+        if result.get("affected") and result.get("impacts"):
+            impacts = result["impacts"]
+            # 更新状态
+            for dimension, changes in impacts.items():
+                if dimension in state_data.get("dimensions", {}):
+                    for attr, value in changes.items():
+                        current = state_data["dimensions"][dimension].get(attr, 50)
+                        state_data["dimensions"][dimension][attr] = max(0, min(100, current + value))
+            
+            # 保存更新后的状态
+            db_manager.update_state(profile_id, state_data)
+        
+        return APIResponse(
+            success=True,
+            data=result,
+            message=f"宏观事件 [{event_id}] 已触发"
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=str(e))
 
 # 启动服务器
 if __name__ == "__main__":
