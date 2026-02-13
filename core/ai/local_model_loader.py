@@ -386,7 +386,7 @@ class LocalModelManager:
             required = config.min_ram_gb * 1.2
             
             return available_ram >= required
-        except:
+        except (OSError, ValueError, TypeError):
             return True  # 无法检测时假设足够
     
     def unload_model(self) -> bool:

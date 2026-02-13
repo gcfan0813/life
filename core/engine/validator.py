@@ -274,7 +274,7 @@ class RuleValidator:
         """检查时代合规性"""
         try:
             era = era_rules.get('era', '') if isinstance(era_rules, dict) else era_rules.era
-        except:
+        except (AttributeError, KeyError):
             era = '现代'
         
         # 简化实现：检查事件类型是否与时代匹配
@@ -308,7 +308,7 @@ class RuleValidator:
                 score *= 0.3
             elif career_level > 70 and '初级' in event.title:
                 score *= 0.5
-        except:
+        except (KeyError, TypeError, AttributeError):
             pass
         
         # 检查年龄适宜性
@@ -340,7 +340,7 @@ class RuleValidator:
                 return 0.9
             else:
                 return 0.7
-        except:
+        except (TypeError, AttributeError):
             return 0.7
     
     def _check_macro_influence(self, event: GameEvent, era_rules) -> float:
@@ -362,7 +362,7 @@ class RuleValidator:
                     return 1.0  # 与历史事件相关，加分
             
             return 0.5
-        except:
+        except (AttributeError, TypeError):
             return 0.5
     
     def _check_common_sense(self, event: GameEvent) -> float:

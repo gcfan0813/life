@@ -312,7 +312,7 @@ class DynamicRuleManager:
             minor = int(parts[-1]) + 1
             parts[-1] = str(minor)
             return '.'.join(parts)
-        except:
+        except (ValueError, IndexError, AttributeError):
             return '1.1'
     
     def _create_version(self, reason: str = "") -> RuleVersion:

@@ -15,53 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.ai.simple_generator import simple_ai_generator, AIReasoningResult
 from core.engine.validator import rule_validator, RuleValidationResult
 from core.storage.database import db_manager
-
-# 临时类型定义
-class CharacterState:
-    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
-        self.id = id
-        self.profile_id = profile_id
-        self.current_date = current_date
-        self.age = age
-        self.dimensions = dimensions
-        self.location = location
-        self.occupation = occupation
-        self.education = education
-        self.life_stage = life_stage
-        self.total_events = total_events
-        self.total_decisions = total_decisions
-        self.days_survived = days_survived
-
-class GameEvent:
-    def __init__(self, id, profile_id, event_date, event_type, title, description, narrative, choices, impacts, is_completed, selected_choice, plausibility, emotional_weight, created_at, updated_at):
-        self.id = id
-        self.profile_id = profile_id
-        self.event_date = event_date
-        self.event_type = event_type
-        self.title = title
-        self.description = description
-        self.narrative = narrative
-        self.choices = choices
-        self.impacts = impacts
-        self.is_completed = is_completed
-        self.selected_choice = selected_choice
-        self.plausibility = plausibility
-        self.emotional_weight = emotional_weight
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-class Memory:
-    def __init__(self, id, profile_id, event_id, summary, emotional_weight, recall_count, last_recalled, retention, created_at, updated_at):
-        self.id = id
-        self.profile_id = profile_id
-        self.event_id = event_id
-        self.summary = summary
-        self.emotional_weight = emotional_weight
-        self.recall_count = recall_count
-        self.last_recalled = last_recalled
-        self.retention = retention
-        self.created_at = created_at
-        self.updated_at = updated_at
+from shared.types import CharacterState, GameEvent, Memory
 
 class SimulationResult:
     def __init__(self, new_state, new_events, new_memories, new_date, reasoning=None):
@@ -154,8 +108,8 @@ class SimulationEngine:
         new_memories = self._generate_decision_memory(profile_id, event, choice_index)
         
         # 6. 标记事件为已完成
-        event.is_completed = True
-        event.selected_choice = choice_index
+        event.isCompleted = True
+        event.selectedChoice = choice_index
         
         # 7. 保存更新
         self.db_manager.save_event(profile_id, event)
@@ -187,7 +141,7 @@ class SimulationEngine:
                 return 'L2'  # 高职业等级使用API
             else:
                 return 'L1'  # 默认使用本地模型
-        except:
+        except (ValueError, TypeError):
             return 'L1'  # 出错时使用默认级别
     
     def _get_era_rules(self, state: CharacterState) -> Dict[str, Any]:
@@ -195,7 +149,7 @@ class SimulationEngine:
         # 简化实现：根据出生年份确定时代
         try:
             birth_year = int(state.current_date.split('-')[0]) - int(state.age)
-        except:
+        except (ValueError, IndexError):
             birth_year = 2000  # 默认年份
         
         if birth_year < 1900:
@@ -211,17 +165,17 @@ class SimulationEngine:
         """更新角色状态"""
         new_state = CharacterState(
             id=current_state.id,
-            profile_id=current_state.profile_id,
-            current_date=self._calculate_new_date(current_state.current_date, days),
+            profileId=current_state.profileId,
+            currentDate=self._calculate_new_date(current_state.currentDate, days),
             age=current_state.age + days/365.25,  # 更新年龄
             dimensions=current_state.dimensions.copy(),
             location=current_state.location,
             occupation=current_state.occupation,
             education=current_state.education,
-            life_stage=self._determine_life_stage(current_state.age + days/365.25),
-            total_events=current_state.total_events + len(events),
-            total_decisions=current_state.total_decisions,
-            days_survived=current_state.days_survived + days
+            lifeStage=self._determine_life_stage(current_state.age + days/365.25),
+            totalEvents=current_state.totalEvents + len(events),
+            totalDecisions=current_state.totalDecisions,
+            daysSurvived=current_state.daysSurvived + days
         )
         
         # 应用事件影响
@@ -257,15 +211,15 @@ class SimulationEngine:
             if event.emotional_weight > 0.3:  # 只保存情感权重较高的记忆
                 memory = Memory(
                     id=f"memory_{event.id}",
-                    profile_id=profile_id,
-                    event_id=event.id,
+                    profileId=profile_id,
+                    eventId=event.id,
                     summary=f"关于{event.title}的记忆",
-                    emotional_weight=event.emotional_weight,
-                    recall_count=0,
-                    last_recalled=None,
+                    emotionalWeight=event.emotionalWeight,
+                    recallCount=0,
+                    lastRecalled=None,
                     retention=1.0,
-                    created_at=now,
-                    updated_at=now
+                    createdAt=now,
+                    updatedAt=now
                 )
                 memories.append(memory)
         
@@ -330,12 +284,12 @@ class SimulationEngine:
         
         if row:
             return GameEvent(
-                id=row[0], profile_id=row[1], event_date=row[2], event_type=row[3],
+                id=row[0], profileId=row[1], eventDate=row[2], eventType=row[3],
                 title=row[4], description=row[5], narrative=row[6],
                 choices=json.loads(row[7]), impacts=json.loads(row[8]),
-                is_completed=bool(row[9]), selected_choice=row[10],
-                plausibility=row[11], emotional_weight=row[12],
-                created_at=row[13], updated_at=row[13]
+                isCompleted=bool(row[9]), selectedChoice=row[10],
+                plausibility=row[11], emotionalWeight=row[12],
+                createdAt=row[13], updatedAt=row[13]
             )
         
         return None
@@ -361,7 +315,7 @@ class SimulationEngine:
                 if dimension and sub_dimension:
                     key = f"{dimension}.{sub_dimension}"
                     effects[key] = change
-            except:
+            except (KeyError, AttributeError, TypeError):
                 continue
         
         return effects
@@ -370,17 +324,17 @@ class SimulationEngine:
         """使用效果更新状态"""
         new_state = CharacterState(
             id=state.id,
-            profile_id=state.profile_id,
-            current_date=state.current_date,
+            profileId=state.profileId,
+            currentDate=state.currentDate,
             age=state.age,
             dimensions=state.dimensions.copy(),
             location=state.location,
             occupation=state.occupation,
             education=state.education,
-            life_stage=state.life_stage,
-            total_events=state.total_events,
-            total_decisions=state.total_decisions + 1,
-            days_survived=state.days_survived
+            lifeStage=state.lifeStage,
+            totalEvents=state.totalEvents,
+            totalDecisions=state.totalDecisions + 1,
+            daysSurvived=state.daysSurvived
         )
         
         for key, change in effects.items():
@@ -417,15 +371,15 @@ class SimulationEngine:
         
         memory = Memory(
             id=f"decision_{event.id}_{choice_index}",
-            profile_id=profile_id,
-            event_id=event.id,
+            profileId=profile_id,
+            eventId=event.id,
             summary=f"在{event.title}中选择了{choice_text}",
-            emotional_weight=event.emotional_weight * 1.2,  # 决策记忆更深刻
-            recall_count=0,
-            last_recalled=None,
+            emotionalWeight=event.emotionalWeight * 1.2,  # 决策记忆更深刻
+            recallCount=0,
+            lastRecalled=None,
             retention=1.0,
-            created_at=now,
-            updated_at=now
+            createdAt=now,
+            updatedAt=now
         )
         
         return [memory]

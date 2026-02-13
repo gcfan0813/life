@@ -24,6 +24,7 @@ from core.engine.sensitive_events import hs_handler, SensitivityLevel, HandlingM
 from core.engine.family_legacy import family_system, FamilyRelation, LegacyType
 from core.storage.database import db_manager
 from shared.types import LifeProfile, CharacterState as PyCharacterState, GameEvent as PyGameEvent, Memory as PyMemory
+from shared.config.config_manager import config_manager
 
 # FastAPI
 from fastapi import FastAPI, HTTPException
@@ -1999,8 +2000,8 @@ if __name__ == "__main__":
     print("="*60)
     print("无限人生：AI编年史 - 完整版API服务")
     print("="*60)
-    print(f"服务器地址: http://localhost:8000")
-    print(f"API文档: http://localhost:8000/docs")
+    print(f"服务器地址: http://{config_manager.get_host()}:{config_manager.get_port()}")
+    print(f"API文档: http://{config_manager.get_host()}:{config_manager.get_port()}/docs")
     print(f"核心引擎: 已集成")
     print(f"规则引擎: 已加载")
     print(f"AI引擎: 已启用")
@@ -2008,8 +2009,8 @@ if __name__ == "__main__":
     
     uvicorn.run(
         "backend.main:app",
-        host="0.0.0.0",
-        port=8000,
+        host=config_manager.get_host(),
+        port=config_manager.get_port(),
         reload=True,
         log_level="info"
     )

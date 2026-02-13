@@ -240,7 +240,7 @@ class AIService:
                     return await self._call_silicon_flow(state, num_events)
                 elif provider == APIProvider.ZHIPU and self.api_keys.get('zhipu'):
                     return await self._call_zhipu(state, num_events)
-            except:
+            except (ConnectionError, TimeoutError, Exception):
                 continue
         
         return await self._generate_local(state, num_events)
@@ -286,7 +286,7 @@ class AIService:
                             "provider": "silicon_flow",
                             "cost": 0.001
                         }
-                    except:
+                    except (KeyError, ValueError, TypeError):
                         pass
         
         raise Exception("API响应解析失败")
@@ -331,7 +331,7 @@ class AIService:
                             "provider": "zhipu",
                             "cost": 0.0005
                         }
-                    except:
+                    except (KeyError, ValueError, TypeError):
                         pass
         
         raise Exception("智谱AI响应解析失败")
