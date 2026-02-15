@@ -6,6 +6,11 @@ import GenesisCharacterCreation from './components/GenesisCharacterCreation'
 import Settings from './components/Settings'
 import Navigation from './components/Navigation'
 import ErrorBoundary from './components/ErrorBoundary'
+import CausalityChainEnhanced from './components/CausalityChainEnhanced'
+import FuturePreviewEnhanced from './components/FuturePreviewEnhanced'
+import AIAssistant from './components/AIAssistant'
+import CustomRuleEditor from './components/CustomRuleEditor'
+import ParallelComparison from './components/ParallelComparison'
 import { useLifeStore } from './stores/lifeStore'
 
 const queryClient = new QueryClient({
