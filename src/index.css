@@ -12,6 +12,50 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  /* 文本对比度层次 */
+  .high-contrast-text {
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+  
+  .medium-contrast-text {
+    color: #f1f5f9;
+  }
+  
+  .low-contrast-text {
+    color: #cbd5e1;
+  }
+  
+  .subtle-text {
+    color: #94a3b8;
+  }
+  
+  /* 视觉层次增强 */
+  .primary-accent {
+    @apply text-indigo-400;
+  }
+  
+  .secondary-accent {
+    @apply text-sky-400;
+  }
+  
+  .tertiary-accent {
+    @apply text-purple-400;
+  }
+  
+  /* 卡片层次 */
+  .card-primary {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10;
+  }
+  
+  .card-secondary {
+    @apply bg-slate-800/40 backdrop-blur-lg border border-white/5;
+  }
+  
+  .card-tertiary {
+    @apply bg-slate-900/30 backdrop-blur-md border border-white/3;
+  }
 }
 
 @layer components {
@@ -50,5 +94,30 @@
   
   .animation-delay-200 {
     animation-delay: 200ms;
+  }
+  
+  /* 新增布局工具类 */
+  .section-gap {
+    @apply space-y-8;
+  }
+  
+  .card-padding {
+    @apply p-6 sm:p-8;
+  }
+  
+  .content-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  .responsive-grid {
+    @apply grid gap-6 sm:gap-8;
+  }
+  
+  .visual-divider {
+    @apply h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-8;
+  }
+  
+  .focus-ring {
+    @apply ring-2 ring-indigo-500/50 ring-offset-2 ring-offset-slate-950;
   }
 }

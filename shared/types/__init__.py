@@ -8,19 +8,22 @@ from datetime import datetime
 # 角色档案类型
 class LifeProfile:
     def __init__(self, id: str, name: str, gender: str, birthDate: str, birthLocation: str, 
-                 familyBackground: str, initialPersonality: Dict[str, float], createdAt: str):
+                 familyBackground: str = "middle", initialPersonality: Dict[str, float] = None, createdAt: str = None,
+                 startingAge: float = 0.0):
         self.id = id
         self.name = name
         self.gender = gender
         self.birthDate = birthDate
         self.birthLocation = birthLocation
-        self.familyBackground = familyBackground
-        self.initialPersonality = initialPersonality
-        self.createdAt = createdAt
+        self.familyBackground = familyBackground or "middle"
+        self.initialPersonality = initialPersonality or {}
+        self.createdAt = createdAt or datetime.now().isoformat()
+        self.startingAge = startingAge
+
 
 # 角色状态类型  
 class CharacterState:
-    def __init__(self, id: str, profileId: str, currentDate: str, age: float, 
+    def __init__(self, id: str, profileId: str, currentDate: str, age: int, 
                  dimensions: Dict[str, Any], location: str, occupation: str, 
                  education: str, lifeStage: str, totalEvents: int, 
                  totalDecisions: int, daysSurvived: int):

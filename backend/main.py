@@ -60,6 +60,7 @@ class CreateProfileRequest(BaseModel):
     birthLocation: str
     familyBackground: str
     initialPersonality: Dict[str, float]
+    startingAge: Optional[float] = 0.0
 
 class AdvanceTimeRequest(BaseModel):
     days: int = 30
@@ -73,52 +74,52 @@ def convert_character_state(state: CharacterState) -> Dict[str, Any]:
     """转换核心引擎的CharacterState为API格式"""
     return {
         "id": state.id,
-        "profileId": state.profile_id,
-        "currentDate": state.current_date,
+        "profileId": state.profileId,
+        "currentDate": state.currentDate,
         "age": state.age,
         "dimensions": state.dimensions,
         "location": state.location,
         "occupation": state.occupation,
         "education": state.education,
-        "lifeStage": state.life_stage,
-        "totalEvents": state.total_events,
-        "totalDecisions": state.total_decisions,
-        "daysSurvived": state.days_survived
+        "lifeStage": state.lifeStage,
+        "totalEvents": state.totalEvents,
+        "totalDecisions": state.totalDecisions,
+        "daysSurvived": state.daysSurvived
     }
 
 def convert_game_event(event: GameEvent) -> Dict[str, Any]:
     """转换核心引擎的GameEvent为API格式"""
     return {
         "id": event.id,
-        "profileId": event.profile_id,
-        "eventDate": event.event_date,
-        "eventType": event.event_type,
+        "profileId": event.profileId,
+        "eventDate": event.eventDate,
+        "eventType": event.eventType,
         "title": event.title,
         "description": event.description,
         "narrative": event.narrative,
         "choices": event.choices,
         "impacts": event.impacts,
-        "isCompleted": event.is_completed,
-        "selectedChoice": event.selected_choice,
+        "isCompleted": event.isCompleted,
+        "selectedChoice": event.selectedChoice,
         "plausibility": event.plausibility,
-        "emotionalWeight": event.emotional_weight,
-        "createdAt": event.created_at,
-        "updatedAt": event.updated_at
+        "emotionalWeight": event.emotionalWeight,
+        "createdAt": event.createdAt,
+        "updatedAt": event.updatedAt
     }
 
 def convert_memory(memory: Memory) -> Dict[str, Any]:
     """转换核心引擎的Memory为API格式"""
     return {
         "id": memory.id,
-        "profileId": memory.profile_id,
-        "eventId": memory.event_id,
+        "profileId": memory.profileId,
+        "eventId": memory.eventId,
         "summary": memory.summary,
-        "emotionalWeight": memory.emotional_weight,
-        "recallCount": memory.recall_count,
-        "lastRecalled": memory.last_recalled,
+        "emotionalWeight": memory.emotionalWeight,
+        "recallCount": memory.recallCount,
+        "lastRecalled": memory.lastRecalled,
         "retention": memory.retention,
-        "createdAt": memory.created_at,
-        "updatedAt": memory.updated_at
+        "createdAt": memory.createdAt,
+        "updatedAt": memory.updatedAt
     }
 
 # API路由
@@ -174,16 +175,17 @@ async def create_profile(request: CreateProfileRequest):
             "birthLocation": request.birthLocation,
             "familyBackground": request.familyBackground,
             "initialPersonality": request.initialPersonality,
+            "startingAge": request.startingAge,
             "createdAt": datetime.now().isoformat()
         }
         
         # 初始化角色状态
-        profile_obj = type('Profile', (), profile_data)
-        initial_state = character_initializer.initialize_character_state(profile_obj)
+        profile_obj = LifeProfile(**profile_data)
+        initial_state = await character_initializer.initialize_character_state(profile_obj)
         
         # 保存到数据库
         db_manager.create_profile(profile_data)
-        db_manager.save_state(profile_data["id"], initial_state)
+        db_manager.save_snapshot(profile_data["id"], profile_data["birthDate"], initial_state, 0)
         
         return APIResponse(
             success=True,
@@ -200,9 +202,75 @@ async def get_profiles():
     """获取所有角色档案"""
     try:
         profiles = db_manager.get_profiles()
-        return APIResponse(success=True, data=profiles)
+        # 转换为列表字典格式，以便Pydantic序列化
+        profile_list = []
+        for p in profiles:
+            profile_list.append({
+                "id": p.id,
+                "name": p.name,
+                "gender": p.gender,
+                "birthDate": p.birthDate,
+                "birthLocation": p.birthLocation,
+                "familyBackground": p.familyBackground,
+                "initialPersonality": p.initialPersonality,
+                "startingAge": p.startingAge,
+                "createdAt": p.createdAt
+            })
+        return APIResponse(success=True, data=profile_list)
     except Exception as e:
         return APIResponse(success=False, error=str(e))
+
+@app.get("/api/profiles/{profile_id}/load", response_model=APIResponse)
+async def load_game(profile_id: str):
+    """加载游戏存档"""
+    try:
+        # 1. 获取档案
+        profile = db_manager.get_profile(profile_id)
+        if not profile:
+            return APIResponse(success=False, error="角色档案不存在")
+        
+        # 2. 获取最新快照状态
+        snapshot = db_manager.get_latest_snapshot(profile_id)
+        if not snapshot:
+            return APIResponse(success=False, error="角色状态不存在")
+        
+        state, event_offset, snapshot_date = snapshot
+        
+        # 3. 获取所有事件
+        events = db_manager.get_events_after_offset(profile_id, -1, "9999-12-31")
+        
+        # 4. 获取记忆
+        memories = db_manager.get_memories(profile_id)
+        
+        # 5. 组合返回数据
+        data = {
+            "profile": {
+                "id": profile.id,
+                "name": profile.name,
+                "gender": profile.gender,
+                "birthDate": profile.birthDate,
+                "birthLocation": profile.birthLocation,
+                "familyBackground": profile.familyBackground,
+                "initialPersonality": profile.initialPersonality,
+                "startingAge": profile.startingAge,
+                "createdAt": profile.createdAt
+            },
+            "state": convert_character_state(state),
+            "events": [convert_game_event(e) for e in events],
+            "memories": [convert_memory(m) for m in memories]
+        }
+        
+        return APIResponse(success=True, data=data, message="游戏加载成功")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return APIResponse(success=False, error=f"加载失败: {str(e)}")
+
+@app.post("/api/profiles/{profile_id}/save", response_model=APIResponse)
+async def save_game(profile_id: str):
+    """手动保存游戏（当前已在操作时自动保存）"""
+    return APIResponse(success=True, data={"success": True}, message="游戏保存成功")
+
 
 @app.post("/api/profiles/{profile_id}/advance", response_model=APIResponse)
 async def advance_time(profile_id: str, request: AdvanceTimeRequest):
@@ -408,7 +476,8 @@ async def validate_event(profile_id: str, event_data: dict):
         era_rules = EraRules(era="现代")
         
         # 验证事件
-        result = validator.calculate_plausibility(event, game_state.state, era_rules)
+        result = validator.calculate_plausibility(event, state, era_rules)
+
         
         return APIResponse(
             success=True,
@@ -444,16 +513,17 @@ async def validate_decision(profile_id: str, decision_data: dict):
         # 加载角色状态（简化版本）
         snapshot = db_manager.get_latest_snapshot(profile_id)
         if not snapshot:
-            state = None
+            return APIResponse(success=False, error="角色状态不存在")
         else:
             state, _, _ = snapshot
         
         choice_index = decision_data.get("choiceIndex", 0)
+
         event_type = decision_data.get("eventType", "general")
         
         # 基于事件类型和当前状态进行决策验证
-        state = game_state.state
         plausibility = 50  # 基础分
+
         
         # 风险评估
         risk_level = "low"
@@ -580,10 +650,11 @@ async def generate_events_ai(profile_id: str, num_events: int = 3, level: str = 
                                 f"L{level[1]}_FREE_API" if level == "L2" else "L3_ADVANCED")
         
         result = await ai_service.generate_events(
-            game_state.state,
+            state,
             num_events=num_events,
             force_level=force_level
         )
+
         
         return APIResponse(
             success=True,
@@ -767,8 +838,8 @@ async def get_memories(profile_id: str, memory_type: str = "all"):
             return APIResponse(
                 success=True,
                 data={
-                    "memories": [{"id": m.id, "summary": m.summary, "emotionalWeight": m.emotional_weight, 
-                                "retention": m.retention, "createdAt": m.created_at} for m in memories],
+                    "memories": [{"id": m.id, "summary": m.summary, "emotionalWeight": m.emotionalWeight, 
+                                "retention": m.retention, "createdAt": m.createdAt} for m in memories],
                     "total": len(memories)
                 },
                 message=f"获取到{len(memories)}条记忆"
@@ -782,15 +853,16 @@ async def get_memories(profile_id: str, memory_type: str = "all"):
         for m in memories:
             mem = Memory(
                 id=m.id,
-                profile_id=m.profile_id,
-                event_id=m.event_id,
+                profileId=m.profileId,
+                eventId=m.eventId,
                 summary=m.summary,
-                emotional_weight=m.emotional_weight,
-                recall_count=m.recall_count,
-                last_recalled=m.last_recalled,
-                retention=m.retention
+                emotionalWeight=m.emotionalWeight,
+                recallCount=m.recallCount,
+                lastRecalled=m.lastRecalled,
+                retention=m.retention,
+                createdAt=m.createdAt,
+                updatedAt=m.updatedAt
             )
-            mem.created_at = m.created_at
             memory_objects.append(mem)
         
         # 计算当前留存率
@@ -800,12 +872,13 @@ async def get_memories(profile_id: str, memory_type: str = "all"):
             current_retentions.append({
                 "id": mem.id,
                 "summary": mem.summary,
-                "emotionalWeight": mem.emotional_weight,
+                "emotionalWeight": mem.emotionalWeight,
                 "retention": round(current_ret, 3),
-                "memoryType": MemorySystem.classify_memory(mem.emotional_weight, mem.importance),
-                "recallCount": mem.recall_count,
-                "createdAt": mem.created_at
+                "memoryType": MemorySystem.classify_memory(mem.emotionalWeight, mem.importance),
+                "recallCount": mem.recallCount,
+                "createdAt": mem.createdAt
             })
+
         
         # 过滤类型
         if memory_type != "all":
@@ -848,15 +921,16 @@ async def recall_memory(profile_id: str, memory_id: str):
         # 创建记忆对象并回忆
         mem = Memory(
             id=target_memory.id,
-            profile_id=target_memory.profile_id,
-            event_id=target_memory.event_id,
+            profileId=target_memory.profileId,
+            eventId=target_memory.eventId,
             summary=target_memory.summary,
-            emotional_weight=target_memory.emotional_weight,
-            recall_count=target_memory.recall_count,
-            last_recalled=target_memory.last_recalled,
-            retention=target_memory.retention
+            emotionalWeight=target_memory.emotionalWeight,
+            recallCount=target_memory.recallCount,
+            lastRecalled=target_memory.lastRecalled,
+            retention=target_memory.retention,
+            createdAt=target_memory.createdAt,
+            updatedAt=target_memory.updatedAt
         )
-        mem.created_at = target_memory.created_at
         
         result = mem.recall()
         
@@ -891,8 +965,9 @@ async def get_memory_stats(profile_id: str):
         # 分类统计
         type_counts = {"epic": 0, "long_term": 0, "short_term": 0}
         for m in memories:
-            mt = MemorySystem.classify_memory(m.emotional_weight, 0.5)
+            mt = MemorySystem.classify_memory(m.emotionalWeight, 0.5)
             type_counts[mt] = type_counts.get(mt, 0) + 1
+
         
         # 高留存记忆
         high_retention = len([m for m in memories if m.retention > 0.7])
@@ -929,16 +1004,15 @@ async def preview_future(profile_id: str, days: int = 90):
             return APIResponse(success=False, error="角色状态不存在")
         
         state, _, _ = snapshot
-        
-        state = game_state.state
         current_dimensions = state.dimensions
+
         
         # 基于当前状态生成预测事件
         predictions = []
         
         # 年龄相关预测
         age = state.age
-        life_stage = state.life_stage
+        life_stage = state.lifeStage
         
         # 健康维度预测
         health = current_dimensions.get("health", 50)
@@ -950,6 +1024,7 @@ async def preview_future(profile_id: str, days: int = 90):
                 "probability": 0.7,
                 "suggestion": "加强锻炼，注意休息"
             })
+
         
         # 精力维度预测
         energy = current_dimensions.get("energy", 50)
@@ -1028,13 +1103,7 @@ async def get_life_summary(profile_id: str):
     """生成人生总结"""
     try:
         # 获取角色信息
-        profiles = db_manager.get_profiles()
-        profile = None
-        for p in profiles:
-            if p.id == profile_id:
-                profile = p
-                break
-        
+        profile = db_manager.get_profile(profile_id)
         if not profile:
             return APIResponse(success=False, error="角色不存在")
         
@@ -1045,13 +1114,12 @@ async def get_life_summary(profile_id: str):
         
         state, _, _ = snapshot
         
-        state = game_state.state
-        
         # 获取事件统计
         events = db_manager.get_events(profile_id, limit=1000)
         
         # 获取记忆
         memories = db_manager.get_memories(profile_id, limit=500)
+
         
         # 人生阶段评估
         age = state.age
@@ -1087,10 +1155,11 @@ async def get_life_summary(profile_id: str):
         relationship_desc = "幸福" if relationship_score >= 80 else "稳定" if relationship_score >= 60 else "平淡" if relationship_score >= 40 else "孤独"
         
         # 成就事件统计
-        major_events = [e for e in events if e.emotional_weight > 0.7]
+        major_events = [e for e in events if getattr(e, 'emotionalWeight', 0) > 0.7]
         
         # 人生感悟（基于记忆）
-        memorable_memories = sorted(memories, key=lambda m: m.emotional_weight, reverse=True)[:3]
+        memorable_memories = sorted(memories, key=lambda m: getattr(m, 'emotionalWeight', 0), reverse=True)[:3]
+
         
         return APIResponse(
             success=True,
@@ -1100,7 +1169,7 @@ async def get_life_summary(profile_id: str):
                     "age": age,
                     "stage": stage,
                     "stageDescription": stage_desc,
-                    "currentDate": state.current_date
+                    "currentDate": state.currentDate
                 },
                 "dimensions": {
                     "health": {"score": health_score, "desc": health_desc},
@@ -1111,14 +1180,14 @@ async def get_life_summary(profile_id: str):
                     "totalEvents": len(events),
                     "majorEvents": len(major_events),
                     "totalMemories": len(memories),
-                    "decisions": state.total_decisions if hasattr(state, 'total_decisions') else 0
+                    "decisions": state.totalDecisions if hasattr(state, 'totalDecisions') else 0
                 },
                 "milestones": [
-                    {"title": e.title, "date": e.event_date, "type": e.event_type}
+                    {"title": e.title, "date": e.eventDate, "type": e.eventType}
                     for e in major_events[:5]
                 ],
                 "reflections": [
-                    {"summary": m.summary, "emotionalWeight": m.emotional_weight}
+                    {"summary": m.summary, "emotionalWeight": m.emotionalWeight}
                     for m in memorable_memories
                 ],
                 "generatedAt": datetime.now().isoformat()
@@ -1140,7 +1209,7 @@ async def get_timeline(profile_id: str, limit: int = 50):
         if not profile_exists:
             return APIResponse(success=False, error="角色不存在")
         
-        events = db_manager.get_events(profile_id, limit=limit)
+        events = db_manager.get_events_after_offset(profile_id, -1, "9999-12-31")[:limit]
         memories = db_manager.get_memories(profile_id, limit=limit)
         
         timeline_items = []
@@ -1150,11 +1219,11 @@ async def get_timeline(profile_id: str, limit: int = 50):
             timeline_items.append({
                 "type": "event",
                 "id": event.id,
-                "date": event.event_date,
+                "date": event.eventDate,
                 "title": event.title,
                 "description": event.description,
-                "isCompleted": event.is_completed,
-                "emotionalWeight": event.emotional_weight
+                "isCompleted": event.isCompleted,
+                "emotionalWeight": event.emotionalWeight
             })
         
         # 转换记忆
@@ -1162,11 +1231,12 @@ async def get_timeline(profile_id: str, limit: int = 50):
             timeline_items.append({
                 "type": "memory",
                 "id": memory.id,
-                "date": memory.created_at,
+                "date": memory.createdAt,
                 "summary": memory.summary,
-                "emotionalWeight": memory.emotional_weight,
+                "emotionalWeight": memory.emotionalWeight,
                 "retention": memory.retention
             })
+
         
         # 按日期排序
         timeline_items.sort(key=lambda x: x["date"], reverse=True)
@@ -1203,17 +1273,17 @@ async def get_event_causality(profile_id: str, event_id: str):
         # 构建因果链
         # 1. 原因事件：同一天或之前发生的事件，可能导致当前事件
         causes = []
-        target_date = target_event.event_date
+        target_date = target_event.eventDate
         
         for event in events:
             if event.id == event_id:
                 continue
             # 简化逻辑：同一类型或相关维度的事件视为潜在原因
-            if event.event_type == target_event.event_type:
+            if event.eventType == target_event.eventType:
                 causes.append({
                     "id": event.id,
                     "title": event.title,
-                    "date": event.event_date,
+                    "date": event.eventDate,
                     "type": "same_type",
                     "strength": 0.6
                 })
@@ -1224,11 +1294,11 @@ async def get_event_causality(profile_id: str, event_id: str):
             if event.id == event_id:
                 continue
             # 查找后续相关事件
-            if event.event_type == target_event.event_type:
+            if event.eventType == target_event.eventType:
                 effects.append({
                     "id": event.id,
                     "title": event.title,
-                    "date": event.event_date,
+                    "date": event.eventDate,
                     "type": "same_type",
                     "strength": 0.6
                 })
@@ -1236,11 +1306,11 @@ async def get_event_causality(profile_id: str, event_id: str):
         # 3. 关联记忆：与该事件相关的记忆
         related_memories = []
         for memory in memories:
-            if memory.event_id == event_id:
+            if memory.eventId == event_id:
                 related_memories.append({
                     "id": memory.id,
                     "summary": memory.summary,
-                    "emotionalWeight": memory.emotional_weight,
+                    "emotionalWeight": memory.emotionalWeight,
                     "retention": memory.retention
                 })
         
@@ -1249,12 +1319,12 @@ async def get_event_causality(profile_id: str, event_id: str):
         
         # 5. 决策影响：如果事件有决策选项，记录决策
         decision_info = None
-        if target_event.selected_choice is not None:
+        if target_event.selectedChoice is not None:
             choices = target_event.choices or []
-            if 0 <= target_event.selected_choice < len(choices):
+            if 0 <= target_event.selectedChoice < len(choices):
                 decision_info = {
-                    "selected": target_event.selected_choice,
-                    "choice": choices[target_event.selected_choice]
+                    "selected": target_event.selectedChoice,
+                    "choice": choices[target_event.selectedChoice]
                 }
         
         return APIResponse(
@@ -1264,10 +1334,10 @@ async def get_event_causality(profile_id: str, event_id: str):
                     "id": target_event.id,
                     "title": target_event.title,
                     "description": target_event.description,
-                    "date": target_event.event_date,
-                    "type": target_event.event_type,
+                    "date": target_event.eventDate,
+                    "type": target_event.eventType,
                     "narrative": target_event.narrative,
-                    "emotionalWeight": target_event.emotional_weight
+                    "emotionalWeight": target_event.emotionalWeight
                 },
                 "causes": causes[:10],  # 最多10个原因
                 "effects": effects[:10],  # 最多10个结果
@@ -1290,7 +1360,7 @@ async def get_event_causality(profile_id: str, event_id: str):
 async def get_full_causality_chain(profile_id: str):
     """获取完整的因果链网络"""
     try:
-        events = db_manager.get_events(profile_id, limit=500)
+        events = db_manager.get_events_after_offset(profile_id, -1, "9999-12-31")[:500]
         
         # 构建事件关系图
         event_nodes = []
@@ -1300,17 +1370,17 @@ async def get_full_causality_chain(profile_id: str):
             event_nodes.append({
                 "id": event.id,
                 "title": event.title,
-                "date": event.event_date,
-                "type": event.event_type,
-                "isCompleted": event.is_completed,
-                "emotionalWeight": event.emotional_weight
+                "date": event.eventDate,
+                "type": event.eventType,
+                "isCompleted": event.isCompleted,
+                "emotionalWeight": event.emotionalWeight
             })
             
             # 查找关联事件（相同类型）
             for other_event in events:
-                if other_event.id != event.id and other_event.event_type == event.event_type:
+                if other_event.id != event.id and other_event.eventType == event.eventType:
                     # 检查日期关系
-                    if other_event.event_date >= event.event_date:
+                    if other_event.eventDate >= event.eventDate:
                         event_links.append({
                             "source": event.id,
                             "target": other_event.id,
@@ -1320,7 +1390,7 @@ async def get_full_causality_chain(profile_id: str):
         # 统计信息
         type_counts = {}
         for event in events:
-            event_type = event.event_type
+            event_type = event.eventType
             type_counts[event_type] = type_counts.get(event_type, 0) + 1
         
         return APIResponse(
@@ -1331,12 +1401,13 @@ async def get_full_causality_chain(profile_id: str):
                 "stats": {
                     "totalEvents": len(events),
                     "typeDistribution": type_counts,
-                    "completedEvents": sum(1 for e in events if e.is_completed),
-                    "pendingEvents": sum(1 for e in events if not e.is_completed)
+                    "completedEvents": sum(1 for e in events if e.isCompleted),
+                    "pendingEvents": sum(1 for e in events if not e.isCompleted)
                 }
             },
             message=f"获取完整因果链，共{len(event_nodes)}个事件"
         )
+
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -1742,11 +1813,12 @@ async def get_profile_legacy(profile_id: str):
         }
         
         # 添加重要事件作为成就
-        notable_events = [e for e in events if e.emotional_weight and e.emotional_weight > 0.7]
+        notable_events = [e for e in events if getattr(e, 'emotionalWeight', 0) and getattr(e, 'emotionalWeight', 0) > 0.7]
         legacy["achievements"] = [
-            {"title": e.title, "date": e.event_date}
+            {"title": e.title, "date": e.eventDate}
             for e in notable_events[:10]
         ]
+
         
         return APIResponse(
             success=True,

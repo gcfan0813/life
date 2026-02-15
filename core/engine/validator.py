@@ -15,39 +15,7 @@ from typing import List, Dict, Any, Tuple
 import json
 from datetime import datetime
 
-# 临时类型定义
-class GameEvent:
-    def __init__(self, id, profile_id, event_date, event_type, title, description, narrative, choices, impacts, is_completed, selected_choice, plausibility, emotional_weight, created_at, updated_at):
-        self.id = id
-        self.profile_id = profile_id
-        self.event_date = event_date
-        self.event_type = event_type
-        self.title = title
-        self.description = description
-        self.narrative = narrative
-        self.choices = choices
-        self.impacts = impacts
-        self.is_completed = is_completed
-        self.selected_choice = selected_choice
-        self.plausibility = plausibility
-        self.emotional_weight = emotional_weight
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-class CharacterState:
-    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
-        self.id = id
-        self.profile_id = profile_id
-        self.current_date = current_date
-        self.age = age
-        self.dimensions = dimensions
-        self.location = location
-        self.occupation = occupation
-        self.education = education
-        self.life_stage = life_stage
-        self.total_events = total_events
-        self.total_decisions = total_decisions
-        self.days_survived = days_survived
+from shared.types import GameEvent, CharacterState
 
 class EraRules:
     def __init__(self, era, historicalEvents=None):
@@ -189,7 +157,7 @@ class RuleValidator:
             {
                 "id": "PSY-TRAUMA-01", 
                 "name": "创伤事件影响",
-                "condition": "event.emotional_weight > 0.8",
+                "condition": "event.emotionalWeight > 0.8",
                 "impact": {"psychological": {"neuroticism": 0.1, "resilience": -0.05}}
             }
         ]
@@ -332,10 +300,10 @@ class RuleValidator:
                 if 'happiness' in psych_dim:
                     emotional_state = psych_dim['happiness']
             
-            if event.emotional_weight > 0.7 and emotional_state > 50:
+            if event.emotionalWeight > 0.7 and emotional_state > 50:
                 # 高情绪事件出现在积极情绪状态下
                 return 0.9
-            elif event.emotional_weight < 0.3 and emotional_state < 30:
+            elif event.emotionalWeight < 0.3 and emotional_state < 30:
                 # 低情绪事件出现在消极情绪状态下  
                 return 0.9
             else:
@@ -446,9 +414,9 @@ class RuleValidator:
             if 'age >' in condition:
                 age_threshold = int(condition.split('age >')[1].strip())
                 return state.age > age_threshold
-            elif 'emotional_weight >' in condition:
-                weight_threshold = float(condition.split('emotional_weight >')[1].strip())
-                return event.emotional_weight > weight_threshold
+            elif 'emotionalWeight >' in condition:
+                weight_threshold = float(condition.split('emotionalWeight >')[1].strip())
+                return event.emotionalWeight > weight_threshold
             
             return True
         except:

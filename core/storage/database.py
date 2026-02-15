@@ -19,84 +19,7 @@ from typing import List, Dict, Optional, Any
 import json
 from datetime import datetime
 
-# 临时类型定义
-class LifeProfile:
-    def __init__(self, id, name, birth_date, birth_place, gender, initial_traits, era, difficulty, created_at, updated_at):
-        self.id = id
-        self.name = name
-        self.birth_date = birth_date
-        self.birth_place = birth_place
-        self.gender = gender
-        self.initial_traits = initial_traits
-        self.era = era
-        self.difficulty = difficulty
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-class CharacterState:
-    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
-        self.id = id
-        self.profile_id = profile_id
-        self.current_date = current_date
-        self.age = age
-        self.dimensions = dimensions
-        self.location = location
-        self.occupation = occupation
-        self.education = education
-        self.life_stage = life_stage
-        self.total_events = total_events
-        self.total_decisions = total_decisions
-        self.days_survived = days_survived
-
-class GameEvent:
-    def __init__(self, id, profile_id, event_date, event_type, title, description, narrative, choices, impacts, is_completed, selected_choice, plausibility, emotional_weight, created_at, updated_at):
-        self.id = id
-        self.profile_id = profile_id
-        self.event_date = event_date
-        self.event_type = event_type
-        self.title = title
-        self.description = description
-        self.narrative = narrative
-        self.choices = choices
-        self.impacts = impacts
-        self.is_completed = is_completed
-        self.selected_choice = selected_choice
-        self.plausibility = plausibility
-        self.emotional_weight = emotional_weight
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-class Memory:
-    def __init__(self, id, profile_id, event_id, summary, emotional_weight, recall_count, last_recalled, retention, created_at, updated_at):
-        self.id = id
-        self.profile_id = profile_id
-        self.event_id = event_id
-        self.summary = summary
-        self.emotional_weight = emotional_weight
-        self.recall_count = recall_count
-        self.last_recalled = last_recalled
-        self.retention = retention
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-# 临时类型定义
-class FiveDimensions:
-    pass
-
-class Relationship:
-    pass
-
-class CareerInfo:
-    pass
-
-class EducationInfo:
-    pass
-
-class FinancialInfo:
-    pass
-
-class HealthInfo:
-    pass
+from shared.types import LifeProfile, CharacterState, GameEvent, Memory
 
 class DatabaseManager:
     """数据库管理器 - 事件溯源架构实现"""
@@ -188,21 +111,26 @@ class DatabaseManager:
     
     def create_profile(self, profile_data: Dict[str, Any]) -> LifeProfile:
         """创建新角色档案"""
-        profile_id = hashlib.sha256(f"{datetime.now().isoformat()}{profile_data['name']}".encode()).hexdigest()[:16]
+        # 如果提供了 ID 则使用，否则生成
+        profile_id = profile_data.get('id')
+        if not profile_id:
+            profile_id = hashlib.sha256(f"{datetime.now().isoformat()}{profile_data['name']}".encode()).hexdigest()[:16]
+        
         now = datetime.now().isoformat()
         
         profile = LifeProfile(
             id=profile_id,
             name=profile_data['name'],
-            birth_date=profile_data['birth_date'],
-            birth_place=profile_data['birth_place'],
+            birthDate=profile_data['birthDate'] if 'birthDate' in profile_data else profile_data.get('birth_date'),
+            birthLocation=profile_data['birthLocation'] if 'birthLocation' in profile_data else profile_data.get('birth_place'),
             gender=profile_data['gender'],
-            initial_traits=profile_data['initial_traits'],
-            era=profile_data['era'],
-            difficulty=profile_data['difficulty'],
-            created_at=now,
-            updated_at=now
+            familyBackground=profile_data.get('familyBackground', profile_data.get('family_background', 'middle')),
+            initialPersonality=profile_data.get('initialPersonality', profile_data.get('initial_traits', {})),
+            createdAt=profile_data.get('createdAt', now),
+            startingAge=profile_data.get('startingAge', profile_data.get('starting_age', 0.0))
         )
+
+
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -212,9 +140,9 @@ class DatabaseManager:
             (id, name, birth_date, birth_place, gender, initial_traits, era, difficulty, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            profile.id, profile.name, profile.birth_date, profile.birth_place,
-            profile.gender, json.dumps(profile.initial_traits), profile.era,
-            profile.difficulty, profile.created_at, profile.updated_at
+            profile.id, profile.name, profile.birthDate, profile.birthLocation,
+            profile.gender, json.dumps(profile.initialPersonality), profile_data.get('era', '21世纪'),
+            profile_data.get('difficulty', 'normal'), profile.createdAt, profile.createdAt
         ))
         
         conn.commit()
@@ -233,14 +161,45 @@ class DatabaseManager:
         profiles = []
         for row in rows:
             profile = LifeProfile(
-                id=row[0], name=row[1], birth_date=row[2], birth_place=row[3],
-                gender=row[4], initial_traits=json.loads(row[5]), era=row[6],
-                difficulty=row[7], created_at=row[8], updated_at=row[9]
+                id=row[0], 
+                name=row[1], 
+                birthDate=row[2], 
+                birthLocation=row[3],
+                gender=row[4], 
+                familyBackground='middle',
+                initialPersonality=json.loads(row[5]), 
+                createdAt=row[8],
+                startingAge=0.0
             )
             profiles.append(profile)
+
         
         conn.close()
         return profiles
+    
+    def get_profile(self, profile_id: str) -> Optional[LifeProfile]:
+        """获取单个角色档案"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM life_profile WHERE id = ?", (profile_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row:
+            return LifeProfile(
+                id=row[0], 
+                name=row[1], 
+                birthDate=row[2], 
+                birthLocation=row[3],
+                gender=row[4], 
+                familyBackground='middle',
+                initialPersonality=json.loads(row[5]), 
+                createdAt=row[8],
+                startingAge=0.0
+            )
+        return None
+
     
     def save_event(self, profile_id: str, event: GameEvent) -> int:
         """保存事件到日志"""
@@ -254,10 +213,10 @@ class DatabaseManager:
              emotional_weight, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            profile_id, event.event_date, event.event_type, event.title,
+            profile_id, event.eventDate, event.eventType, event.title,
             event.description, event.narrative, json.dumps(event.choices),
-            json.dumps(event.impacts), event.is_completed, event.selected_choice,
-            event.plausibility, event.emotional_weight, event.created_at
+            json.dumps(event.impacts), event.isCompleted, event.selectedChoice,
+            event.plausibility, event.emotionalWeight, event.createdAt
         ))
         
         event_id = cursor.lastrowid
@@ -321,17 +280,47 @@ class DatabaseManager:
         
         for row in rows:
             event = GameEvent(
-                id=row[0], profile_id=row[1], event_date=row[2], event_type=row[3],
+                id=row[0], profileId=row[1], eventDate=row[2], eventType=row[3],
                 title=row[4], description=row[5], narrative=row[6],
                 choices=json.loads(row[7]), impacts=json.loads(row[8]),
-                is_completed=bool(row[9]), selected_choice=row[10],
-                plausibility=row[11], emotional_weight=row[12],
-                created_at=row[13], updated_at=row[13]
+                isCompleted=bool(row[9]), selectedChoice=row[10],
+                plausibility=row[11], emotionalWeight=row[12],
+                createdAt=row[13], updatedAt=row[13]
             )
             events.append(event)
         
         conn.close()
         return events
+
+    def get_events(self, profile_id: str, limit: int = 100) -> List[GameEvent]:
+        """获取角色的事件列表"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT * FROM event_log 
+            WHERE profile_id = ? 
+            ORDER BY event_date DESC, id DESC
+            LIMIT ?
+        """, (profile_id, limit))
+        
+        rows = cursor.fetchall()
+        events = []
+        
+        for row in rows:
+            event = GameEvent(
+                id=row[0], profileId=row[1], eventDate=row[2], eventType=row[3],
+                title=row[4], description=row[5], narrative=row[6],
+                choices=json.loads(row[7]), impacts=json.loads(row[8]),
+                isCompleted=bool(row[9]), selectedChoice=row[10],
+                plausibility=row[11], emotionalWeight=row[12],
+                createdAt=row[13], updatedAt=row[13]
+            )
+            events.append(event)
+        
+        conn.close()
+        return events
+
     
     def save_memory(self, profile_id: str, memory: Memory):
         """保存记忆"""
@@ -344,15 +333,16 @@ class DatabaseManager:
              recall_count, last_recalled, retention, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            memory.id, profile_id, memory.event_id, memory.summary,
-            memory.emotional_weight, memory.recall_count, memory.last_recalled,
-            memory.retention, memory.created_at, memory.updated_at
+            memory.id, profile_id, memory.eventId, memory.summary,
+            memory.emotionalWeight, memory.recallCount, memory.lastRecalled,
+            memory.retention, memory.createdAt, memory.updatedAt
         ))
+
         
         conn.commit()
         conn.close()
     
-    def get_memories(self, profile_id: str, min_retention: float = 0.3) -> List[Memory]:
+    def get_memories(self, profile_id: str, min_retention: float = 0.3, limit: int = 500) -> List[Memory]:
         """获取保留度高于阈值的记忆"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -361,16 +351,18 @@ class DatabaseManager:
             SELECT * FROM memory 
             WHERE profile_id = ? AND retention >= ?
             ORDER BY emotional_weight DESC, last_recalled DESC
-        """, (profile_id, min_retention))
+            LIMIT ?
+        """, (profile_id, min_retention, limit))
         
         rows = cursor.fetchall()
         memories = []
+
         
         for row in rows:
             memory = Memory(
-                id=row[0], profile_id=row[1], event_id=row[2], summary=row[3],
-                emotional_weight=row[4], recall_count=row[5], last_recalled=row[6],
-                retention=row[7], created_at=row[8], updated_at=row[9]
+                id=row[0], profileId=row[1], eventId=row[2], summary=row[3],
+                emotionalWeight=row[4], recallCount=row[5], lastRecalled=row[6],
+                retention=row[7], createdAt=row[8], updatedAt=row[9]
             )
             memories.append(memory)
         

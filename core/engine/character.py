@@ -3,37 +3,10 @@
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 
-# 临时类型定义
-class LifeProfile:
-    def __init__(self, id, name, birth_date, birth_place, gender, initial_traits, era, difficulty, created_at, updated_at):
-        self.id = id
-        self.name = name
-        self.birth_date = birth_date
-        self.birth_place = birth_place
-        self.gender = gender
-        self.initial_traits = initial_traits
-        self.era = era
-        self.difficulty = difficulty
-        self.created_at = created_at
-        self.updated_at = updated_at
-
-class CharacterState:
-    def __init__(self, id, profile_id, current_date, age, dimensions, location, occupation, education, life_stage, total_events, total_decisions, days_survived):
-        self.id = id
-        self.profile_id = profile_id
-        self.current_date = current_date
-        self.age = age
-        self.dimensions = dimensions
-        self.location = location
-        self.occupation = occupation
-        self.education = education
-        self.life_stage = life_stage
-        self.total_events = total_events
-        self.total_decisions = total_decisions
-        self.days_survived = days_survived
+from shared.types import LifeProfile, CharacterState
 
 class CharacterInitializer:
     """角色状态初始化器"""
@@ -107,43 +80,59 @@ class CharacterInitializer:
     async def initialize_character_state(self, profile: LifeProfile) -> CharacterState:
         """初始化角色状态"""
         
-        # 计算初始年龄
-        birth_date = datetime.fromisoformat(profile.birth_date)
-        current_date = datetime.fromisoformat(profile.birth_date)
-        age = 0  # 从出生开始
+        # 计算初始日期（出生日期 + 起始年龄）
+        birth_date = datetime.fromisoformat(profile.birthDate)
+        starting_age_val = getattr(profile, 'startingAge', 0.0)
+        
+        # 计算当前游戏日期
+        current_date_obj = birth_date + timedelta(days=int(starting_age_val * 365.25))
+        current_date_str = current_date_obj.isoformat().split('T')[0]
+        
+        # 计算整数年龄
+        age = current_date_obj.year - birth_date.year
+        if (current_date_obj.month, current_date_obj.day) < (birth_date.month, birth_date.day):
+            age -= 1
         
         # 创建基础状态
         base_dimensions = self.base_attributes.copy()
         
         # 根据初始特质调整属性
-        self._adjust_by_family_background(base_dimensions, profile.initial_traits.get('familyBackground', 'middle'))
-        self._adjust_by_education(base_dimensions, profile.initial_traits.get('educationLevel', 'none'))
-        self._adjust_by_health(base_dimensions, profile.initial_traits.get('healthStatus', 'average'))
-        self._adjust_by_personality_traits(base_dimensions, profile.initial_traits)
+        self._adjust_by_family_background(base_dimensions, getattr(profile, 'familyBackground', 'middle'))
         
-        # 根据难度调整
-        self._adjust_by_difficulty(base_dimensions, profile.difficulty)
-        
-        # 根据时代背景调整
-        self._adjust_by_era(base_dimensions, profile.era)
+        # 如果起始年龄大于0，进行额外的人生历练调整（模拟成长过程）
+        if starting_age_val > 0:
+            self._apply_growth_simulation(base_dimensions, starting_age_val)
         
         # 创建初始状态
         character_state = CharacterState(
             id=f"state_{profile.id}",
-            profile_id=profile.id,
-            current_date=profile.birth_date,
+            profileId=profile.id,
+            currentDate=current_date_str,
             age=age,
             dimensions=base_dimensions,
-            location=profile.birth_place,
-            occupation="无",
-            education="未开始",
-            life_stage=self._determine_life_stage(age),
-            total_events=0,
-            total_decisions=0,
-            days_survived=0
+            location=profile.birthLocation,
+            occupation="无" if age < 18 else "待业",
+            education="未开始" if age < 6 else "基础教育",
+            lifeStage=self._determine_life_stage(age),
+            totalEvents=0,
+            totalDecisions=0,
+            daysSurvived=(current_date_obj - birth_date).days
         )
         
         return character_state
+
+    def _apply_growth_simulation(self, dimensions: Dict[str, Any], age: float):
+        """模拟成长过程中的属性变化"""
+        # 简单模拟：随着年龄增长，认知和社会属性会提升
+        growth_factor = min(age / 20.0, 1.0) # 20岁达到一个基础峰值
+        
+        dimensions['cognitive']['knowledge']['practical'] += 20 * growth_factor
+        dimensions['social']['socialCapital'] += 10 * growth_factor
+        dimensions['physiological']['fitness'] += 10 * growth_factor
+        
+        if age >= 18:
+            dimensions['social']['career']['level'] = 10
+            dimensions['cognitive']['knowledge']['academic'] += 30
     
     def _adjust_by_family_background(self, dimensions: Dict[str, Any], background: str):
         """根据家庭背景调整属性"""

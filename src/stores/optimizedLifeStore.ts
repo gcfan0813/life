@@ -264,11 +264,24 @@ export const useLifeStore = create<LifeStore>()(
               // 回退到本地服务
               const localResult = await localService.advanceTime(currentProfile.id, days)
               
+              // 修复本地服务无法递增的问题：如果本地服务没返回新日期，前端根据当前日期计算
+              let nextDate = localResult.newDate;
+              if (!nextDate && get().currentDate) {
+                const date = new Date(get().currentDate);
+                date.setDate(date.getDate() + days);
+                nextDate = date.toISOString().split('T')[0];
+              }
+
               set(state => ({
-                currentState: localResult.newState,
+                currentState: {
+                  ...state.currentState,
+                  ...localResult.newState,
+                  currentDate: nextDate || state.currentDate,
+                  age: (state.currentState?.age || 0) + days / 365
+                },
                 events: [...state.events, ...localResult.newEvents],
                 memories: [...state.memories, ...localResult.newMemories],
-                currentDate: localResult.newDate,
+                currentDate: nextDate || state.currentDate,
               }))
             }
             

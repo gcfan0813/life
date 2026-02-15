@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
@@ -14,8 +15,8 @@ export default defineConfig({
   server: {
     port: 3002,
     host: true,
-    strictPort: false, // 端口被占用时自动切换到下一个可用端口
-    open: false, // 不自动打开浏览器
+    strictPort: false,
+    open: false,
   },
   build: {
     target: 'es2020',
@@ -32,4 +33,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom'],
   },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    globals: true,
+  }
 })

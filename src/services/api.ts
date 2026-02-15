@@ -21,6 +21,7 @@ export interface CreateProfileRequest {
     agreeableness: number
     neuroticism: number
   }
+  startingAge?: number
 }
 
 export interface AdvanceTimeRequest {

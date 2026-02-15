@@ -42,6 +42,9 @@ class SimulationEngine:
         
     async def advance_time(self, profile_id: str, current_state: CharacterState, days: int = 1) -> SimulationResult:
         """推进时间模拟"""
+        # 获取档案以获取生日
+        profile = self.db_manager.get_profile(profile_id)
+        birth_date = datetime.fromisoformat(profile.birthDate) if profile else None
         
         # 1. 使用AI生成未来事件
         model_level = self._determine_model_level(current_state)
@@ -60,13 +63,14 @@ class SimulationEngine:
                 validated_events.append(event)
         
         # 3. 更新角色状态
-        new_state = self._update_character_state(current_state, validated_events, days)
+        new_state = self._update_character_state(current_state, validated_events, days, birth_date)
         
         # 4. 生成记忆
         new_memories = self._generate_memories(profile_id, validated_events)
         
         # 5. 更新日期
-        new_date = self._calculate_new_date(current_state.current_date, days)
+        new_date = self._calculate_new_date(current_state.currentDate, days)
+
         
         # 6. 保存事件和状态
         for event in validated_events:
@@ -148,7 +152,7 @@ class SimulationEngine:
         """获取时代规则"""
         # 简化实现：根据出生年份确定时代
         try:
-            birth_year = int(state.current_date.split('-')[0]) - int(state.age)
+            birth_year = int(state.currentDate.split('-')[0]) - int(state.age)
         except (ValueError, IndexError):
             birth_year = 2000  # 默认年份
         
@@ -161,21 +165,37 @@ class SimulationEngine:
         else:
             return {'era': '21世纪', 'historicalEvents': ['科技革命', '全球化']}
     
-    def _update_character_state(self, current_state: CharacterState, events: List[GameEvent], days: int) -> CharacterState:
+    def _update_character_state(self, current_state: CharacterState, events: List[GameEvent], days: int, birth_date: datetime = None) -> CharacterState:
         """更新角色状态"""
+        new_date_str = self._calculate_new_date(current_state.currentDate, days)
+        new_date_obj = datetime.fromisoformat(new_date_str)
+        
+        # 计算生存天数（从出生开始）
+        if birth_date:
+            days_survived = (new_date_obj - birth_date).days
+            # 计算年龄：每过一次生日涨一岁
+            # 如果当前月日 >= 生日月日，年龄 = 当前年份 - 出生年份
+            # 否则 年龄 = 当前年份 - 出生年份 - 1
+            age = new_date_obj.year - birth_date.year
+            if (new_date_obj.month, new_date_obj.day) < (birth_date.month, birth_date.day):
+                age -= 1
+        else:
+            days_survived = current_state.daysSurvived + days
+            age = int(current_state.age) # 如果没有出生日期，保持现状
+            
         new_state = CharacterState(
             id=current_state.id,
             profileId=current_state.profileId,
-            currentDate=self._calculate_new_date(current_state.currentDate, days),
-            age=current_state.age + days/365.25,  # 更新年龄
+            currentDate=new_date_str,
+            age=age,
             dimensions=current_state.dimensions.copy(),
             location=current_state.location,
             occupation=current_state.occupation,
             education=current_state.education,
-            lifeStage=self._determine_life_stage(current_state.age + days/365.25),
+            lifeStage=self._determine_life_stage(age),
             totalEvents=current_state.totalEvents + len(events),
             totalDecisions=current_state.totalDecisions,
-            daysSurvived=current_state.daysSurvived + days
+            daysSurvived=days_survived
         )
         
         # 应用事件影响
@@ -208,7 +228,7 @@ class SimulationEngine:
         now = datetime.now().isoformat()
         
         for event in events:
-            if event.emotional_weight > 0.3:  # 只保存情感权重较高的记忆
+            if event.emotionalWeight > 0.3:  # 只保存情感权重较高的记忆
                 memory = Memory(
                     id=f"memory_{event.id}",
                     profileId=profile_id,
@@ -231,10 +251,12 @@ class SimulationEngine:
         new_date = current + timedelta(days=days)
         return new_date.isoformat().split('T')[0]
     
-    def _determine_life_stage(self, age: float) -> str:
+    def _determine_life_stage(self, age: int) -> str:
         """确定人生阶段"""
-        if age < 13:
-            return 'childhood'
+        if age < 6:
+            return 'childhood' # 幼儿
+        elif age < 13:
+            return 'childhood' # 童年
         elif age < 20:
             return 'teen'
         elif age < 35:

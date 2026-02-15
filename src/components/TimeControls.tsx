@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Play, Pause, SkipForward, RotateCcw } from 'lucide-react'
+import { FastForward } from 'lucide-react'
 
 interface TimeControlsProps {
   onAdvance: (days: number) => void
@@ -8,105 +8,53 @@ interface TimeControlsProps {
 
 const TimeControls: React.FC<TimeControlsProps> = ({ onAdvance, isLoading }) => {
   const [selectedDays, setSelectedDays] = useState(30)
-  const [isPlaying, setIsPlaying] = useState(false)
 
   const timeOptions = [
-    { days: 1, label: '1天', description: '日常推进' },
-    { days: 7, label: '1周', description: '周计划' },
-    { days: 30, label: '1月', description: '月度规划' },
-    { days: 90, label: '3月', description: '季度规划' },
-    { days: 365, label: '1年', description: '年度规划' }
+    { days: 1, label: '1D', description: '日常推进' },
+    { days: 7, label: '1W', description: '周计划' },
+    { days: 30, label: '1M', description: '月度规划' },
+    { days: 90, label: '3M', description: '季度规划' },
+    { days: 365, label: '1Y', description: '年度规划' }
   ]
 
-  const handlePlayPause = () => {
-    if (isPlaying) {
-      setIsPlaying(false)
-      // 停止自动播放逻辑
-    } else {
-      setIsPlaying(true)
-      // 启动自动播放逻辑
-    }
-  }
-
-  const handleSkip = () => {
-    onAdvance(selectedDays)
-  }
-
-  const handleRewind = () => {
-    // 回退功能（待实现）
-    alert('时间回退功能开发中...')
-  }
-
   return (
-    <div className="flex items-center space-x-4">
-      {/* 播放控制 */}
-      <div className="flex items-center space-x-2">
-        <button
-          onClick={handlePlayPause}
-          className={`p-2 rounded-full ${
-            isPlaying 
-              ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-              : 'bg-green-100 text-green-600 hover:bg-green-200'
-          } transition-colors disabled:opacity-50`}
-          disabled={isLoading}
-        >
-          {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-        </button>
-        
-        <button
-          onClick={handleSkip}
-          className="p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition-colors disabled:opacity-50"
-          disabled={isLoading}
-        >
-          <SkipForward size={16} />
-        </button>
-        
-        <button
-          onClick={handleRewind}
-          className="p-2 rounded-full bg-yellow-100 text-yellow-600 hover:bg-yellow-200 transition-colors disabled:opacity-50"
-          disabled={isLoading}
-        >
-          <RotateCcw size={16} />
-        </button>
+    <div className="flex items-center gap-4 bg-white/5 p-1.5 rounded-2xl border border-white/5">
+      {/* 步进选择 */}
+      <div className="flex items-center gap-1">
+        {timeOptions.map((option) => (
+          <button
+            key={option.days}
+            onClick={() => setSelectedDays(option.days)}
+            className={`px-4 py-2.5 rounded-xl text-[10px] font-black transition-all duration-300 ${
+              selectedDays === option.days
+                ? 'bg-white text-slate-950 shadow-xl scale-105'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+            }`}
+            disabled={isLoading}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
-      {/* 时间选择器 */}
-      <div className="flex items-center space-x-3">
-        <span className="text-sm font-medium text-gray-700">推进时间:</span>
-        <div className="flex space-x-1">
-          {timeOptions.map((option) => (
-            <button
-              key={option.days}
-              onClick={() => setSelectedDays(option.days)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                selectedDays === option.days
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              disabled={isLoading}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="w-px h-8 bg-white/10 mx-1" />
 
-      {/* 推进按钮 */}
+      {/* 核心推进按钮 */}
       <button
         onClick={() => onAdvance(selectedDays)}
         disabled={isLoading}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-medium"
+        className="group relative px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50 overflow-hidden"
       >
-        {isLoading ? '推演中...' : `推进 ${selectedDays} 天`}
-      </button>
-
-      {/* 播放状态指示器 */}
-      {isPlaying && (
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-xs text-green-600">自动播放中</span>
+        <div className="relative z-10 flex items-center gap-2">
+          {isLoading ? (
+            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <FastForward size={14} />
+          )}
+          <span>{isLoading ? 'SYNCING...' : `ADVANCE ${selectedDays}D`}</span>
         </div>
-      )}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+      </button>
     </div>
   )
 }

@@ -75,8 +75,8 @@ export interface FiveDimensionSystem {
 // 角色状态
 export interface CharacterState {
   id: string;
-  profile_id: string;
-  current_date: string; // YYYY-MM-DD
+  profileId: string;
+  currentDate: string; // YYYY-MM-DD
   age: number;
   dimensions: FiveDimensionSystem;
   
@@ -86,27 +86,27 @@ export interface CharacterState {
   education: string;
   
   // 时间相关
-  life_stage: 'childhood' | 'teen' | 'youngAdult' | 'adult' | 'middleAge' | 'senior';
+  lifeStage: 'childhood' | 'teen' | 'youngAdult' | 'adult' | 'middleAge' | 'senior';
   
   // 统计信息
-  total_events: number;
-  total_decisions: number;
-  days_survived: number;
+  totalEvents: number;
+  totalDecisions: number;
+  daysSurvived: number;
 }
 
 // 游戏事件
 export interface GameEvent {
   id: string;
-  profile_id: string;
-  event_date: string;
-  event_type: 'milestone' | 'crisis' | 'opportunity' | 'relationship' | 'daily';
+  profileId: string;
+  eventDate: string;
+  eventType: 'milestone' | 'crisis' | 'opportunity' | 'relationship' | 'daily';
   title: string;
   description: string;
   narrative: string;
   
   // 事件属性
   plausibility: number; // 可信度 (0-100)
-  emotional_weight: number; // 情感权重 (0-1)
+  emotionalWeight: number; // 情感权重 (0-1)
   
   // 影响
   impacts: any[];
@@ -115,10 +115,10 @@ export interface GameEvent {
   choices: EventChoice[];
   
   // 状态
-  is_completed: boolean;
-  selected_choice?: number;
-  created_at: string;
-  updated_at: string;
+  isCompleted: boolean;
+  selectedChoice?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 事件选择项
@@ -145,35 +145,35 @@ export interface EventChoice {
 export interface LifeProfile {
   id: string;
   name: string;
-  birth_date: string; // YYYY-MM-DD
-  birth_place: string;
+  birthDate: string; // YYYY-MM-DD
+  birthLocation: string;
   gender: 'male' | 'female';
-  initial_traits: {
-    familyBackground: 'poor' | 'middle' | 'wealthy';
-    educationLevel: 'none' | 'primary' | 'secondary' | 'college' | 'graduate';
-    healthStatus: 'poor' | 'average' | 'good' | 'excellent';
-    riskTolerance: number; // 风险承受度 (0-100)
-    ambition: number; // 野心 (0-100)
-    empathy: number; // 同理心 (0-100)
+  initialPersonality: {
+    openness: number;
+    conscientiousness: number;
+    extraversion: number;
+    agreeableness: number;
+    neuroticism: number;
   };
   era: string;
   difficulty: string;
-  created_at: string;
-  updated_at: string;
+  startingAge?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // 记忆
 export interface Memory {
   id: string;
-  profile_id: string;
-  event_id: string;
+  profileId: string;
+  eventId: string;
   summary: string;
-  emotional_weight: number;
-  recall_count: number;
-  last_recalled: string | null;
+  emotionalWeight: number;
+  recallCount: number;
+  lastRecalled: string | null;
   retention: number;
-  created_at: string;
-  updated_at: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // AI设置
