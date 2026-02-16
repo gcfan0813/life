@@ -156,26 +156,26 @@ const QuantumLifeTimeline: React.FC = () => {
               <div className="hidden sm:flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
                   <Heart className="w-4 h-4 text-rose-400" />
-                  <span className="text-slate-300">{currentState.health.toFixed(1)}</span>
+                  <span className="text-slate-300">{(currentState?.health || 0).toFixed(1)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Brain className="w-4 h-4 text-indigo-400" />
-                  <span className="text-slate-300">{currentState.intelligence.toFixed(1)}</span>
+                  <span className="text-slate-300">{(currentState?.intelligence || 0).toFixed(1)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-emerald-400" />
-                  <span className="text-slate-300">{currentState.social.toFixed(1)}</span>
+                  <span className="text-slate-300">{(currentState?.social || 0).toFixed(1)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Target className="w-4 h-4 text-amber-400" />
-                  <span className="text-slate-300">{currentState.achievement.toFixed(1)}</span>
+                  <span className="text-slate-300">{(currentState?.achievement || 0).toFixed(1)}</span>
                 </div>
               </div>
             </div>
 
             <div className="text-right">
-              <div className="text-lg font-bold text-white">{currentState.age} 岁</div>
-              <div className="text-sm text-slate-400">{currentState.currentDate}</div>
+              <div className="text-lg font-bold text-white">{(currentState?.age || 0)} 岁</div>
+              <div className="text-sm text-slate-400">{currentState?.currentDate || '未知日期'}</div>
             </div>
           </div>
         </motion.div>
