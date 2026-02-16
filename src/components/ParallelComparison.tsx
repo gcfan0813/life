@@ -146,17 +146,21 @@ const ParallelComparison: React.FC<ParallelComparisonProps> = ({ currentProfileI
 
   // 获取平均值
   const getAverage = (values: number[]): number => {
-    return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+    if (!values || values.length === 0) return 0;
+    const sum = values.reduce((a, b) => (a || 0) + (b || 0), 0);
+    return sum / values.length;
   };
 
   // 获取最大值
   const getMax = (values: number[]): number => {
-    return values.length > 0 ? Math.max(...values) : 0;
+    if (!values || values.length === 0) return 0;
+    return Math.max(...values.filter(v => v !== undefined && v !== null)) || 0;
   };
 
   // 获取最小值
   const getMin = (values: number[]): number => {
-    return values.length > 0 ? Math.min(...values) : 0;
+    if (!values || values.length === 0) return 0;
+    return Math.min(...values.filter(v => v !== undefined && v !== null)) || 0;
   };
 
   const metrics = calculateComparisonMetrics();
