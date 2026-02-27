@@ -33,7 +33,7 @@ class DatabaseManager:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # 角色档案表
+        # 角色档案表 - 与 TypeScript 类型保持一致
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS life_profile (
                 id TEXT PRIMARY KEY,
@@ -41,7 +41,9 @@ class DatabaseManager:
                 birth_date TEXT NOT NULL,
                 birth_place TEXT NOT NULL,
                 gender TEXT NOT NULL,
+                family_background TEXT DEFAULT 'middle',
                 initial_traits BLOB NOT NULL,
+                starting_age REAL DEFAULT 0.0,
                 era TEXT NOT NULL,
                 difficulty TEXT NOT NULL,
                 created_at TEXT NOT NULL,
@@ -137,11 +139,13 @@ class DatabaseManager:
         
         cursor.execute("""
             INSERT INTO life_profile 
-            (id, name, birth_date, birth_place, gender, initial_traits, era, difficulty, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, name, birth_date, birth_place, gender, family_background, initial_traits, 
+             starting_age, era, difficulty, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             profile.id, profile.name, profile.birthDate, profile.birthLocation,
-            profile.gender, json.dumps(profile.initialPersonality), profile_data.get('era', '21世纪'),
+            profile.gender, profile.familyBackground, json.dumps(profile.initialPersonality),
+            profile.startingAge, profile_data.get('era', '21世纪'),
             profile_data.get('difficulty', 'normal'), profile.createdAt, profile.createdAt
         ))
         
@@ -158,18 +162,20 @@ class DatabaseManager:
         cursor.execute("SELECT * FROM life_profile ORDER BY created_at DESC")
         rows = cursor.fetchall()
         
-        profiles = []
+        profiles: List[LifeProfile] = []
         for row in rows:
+            # 新表结构: id, name, birth_date, birth_place, gender, family_background, 
+            # initial_traits, starting_age, era, difficulty, created_at, updated_at
             profile = LifeProfile(
                 id=row[0], 
                 name=row[1], 
                 birthDate=row[2], 
                 birthLocation=row[3],
                 gender=row[4], 
-                familyBackground='middle',
-                initialPersonality=json.loads(row[5]), 
-                createdAt=row[8],
-                startingAge=0.0
+                familyBackground=row[5] if len(row) > 5 else 'middle',
+                initialPersonality=json.loads(row[6]) if len(row) > 6 else {}, 
+                createdAt=row[10] if len(row) > 10 else row[8],
+                startingAge=row[7] if len(row) > 7 else 0.0
             )
             profiles.append(profile)
 
@@ -187,16 +193,18 @@ class DatabaseManager:
         conn.close()
         
         if row:
+            # 新表结构: id, name, birth_date, birth_place, gender, family_background, 
+            # initial_traits, starting_age, era, difficulty, created_at, updated_at
             return LifeProfile(
                 id=row[0], 
                 name=row[1], 
                 birthDate=row[2], 
                 birthLocation=row[3],
                 gender=row[4], 
-                familyBackground='middle',
-                initialPersonality=json.loads(row[5]), 
-                createdAt=row[8],
-                startingAge=0.0
+                familyBackground=row[5] if len(row) > 5 else 'middle',
+                initialPersonality=json.loads(row[6]) if len(row) > 6 else {}, 
+                createdAt=row[10] if len(row) > 10 else row[8],
+                startingAge=row[7] if len(row) > 7 else 0.0
             )
         return None
 

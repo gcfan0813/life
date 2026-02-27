@@ -254,12 +254,12 @@ ai_model_cache = AIModelCache()
 
 
 def _init_database(self):
-    """初始化数据库表结构（简化版本）"""
+    """初始化数据库表结构（与主数据库一致）"""
     conn = self._get_connection()
     try:
         cursor = conn.cursor()
         
-        # 确保必要的表存在
+        # 确保必要的表存在 - 与主数据库结构保持一致
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS life_profile (
                 id TEXT PRIMARY KEY,
@@ -267,7 +267,9 @@ def _init_database(self):
                 birth_date TEXT NOT NULL,
                 birth_place TEXT NOT NULL,
                 gender TEXT NOT NULL,
-                initial_traits TEXT NOT NULL,
+                family_background TEXT DEFAULT 'middle',
+                initial_traits BLOB NOT NULL,
+                starting_age REAL DEFAULT 0.0,
                 era TEXT NOT NULL,
                 difficulty TEXT NOT NULL,
                 created_at TEXT NOT NULL,

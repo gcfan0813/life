@@ -90,21 +90,23 @@ class AIService:
             print(f"[AI] 本地模型系统检查失败: {e}")
         
     def _load_api_keys(self) -> Dict[str, str]:
-        """加载API密钥"""
-        # 默认API密钥（用户提供的）
-        default_keys = {
-            'silicon_flow': 'sk-ecjqmtjapqgboinnulycfbsbyxcpfcatkjqaifirlxrgpiih',
-            'zhipu': '',
-            'baidu': '',
-            'alibaba': ''
+        """加载API密钥 - 从环境变量读取，不再使用硬编码默认值"""
+        api_keys = {
+            'silicon_flow': os.environ.get('SILICON_FLOW_API_KEY', ''),
+            'zhipu': os.environ.get('ZHIPU_API_KEY', ''),
+            'baidu': os.environ.get('BAIDU_API_KEY', ''),
+            'alibaba': os.environ.get('ALIBABA_API_KEY', '')
         }
         
-        return {
-            'silicon_flow': os.environ.get('SILICON_FLOW_API_KEY', default_keys['silicon_flow']),
-            'zhipu': os.environ.get('ZHIPU_API_KEY', default_keys['zhipu']),
-            'baidu': os.environ.get('BAIDU_API_KEY', default_keys['baidu']),
-            'alibaba': os.environ.get('ALIBABA_API_KEY', default_keys['alibaba'])
-        }
+        # 记录API密钥配置状态（不记录实际密钥值）
+        configured_apis = [k for k, v in api_keys.items() if v]
+        if configured_apis:
+            print(f"[AI] 已配置的API: {', '.join(configured_apis)}")
+        else:
+            print("[AI] 警告: 未配置任何API密钥，请在环境变量中设置")
+            print("[AI] 可用环境变量: SILICON_FLOW_API_KEY, ZHIPU_API_KEY, BAIDU_API_KEY, ALIBABA_API_KEY")
+        
+        return api_keys
     
     def set_level(self, level: AILevel):
         """设置AI推演级别"""
