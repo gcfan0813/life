@@ -11,11 +11,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from typing import List, Dict, Any, Tuple
 from datetime import datetime
 
-from typing import List, Dict, Any, Tuple
-import json
-from datetime import datetime
-
 from shared.types import GameEvent, CharacterState
+from core.engine.constants import ValidationConstants, EventConstants, LogMessages
 
 class EraRules:
     def __init__(self, era, historicalEvents=None):
@@ -183,50 +180,51 @@ class RuleValidator:
     
     def calculate_plausibility(self, event: GameEvent, state: CharacterState, era_rules: EraRules) -> RuleValidationResult:
         """计算事件合理性评分"""
-        score = 50  # 基础分
+        # 使用常量定义的基础分数
+        score = ValidationConstants.BASE_PLAUSIBILITY_SCORE
         conflicts = []
         warnings = []
         suggestions = []
         
-        # 1. 时代合规性检查 (±30)
+        # 1. 时代合规性检查
         era_score = self._check_era_compatibility(event, era_rules)
-        score += era_score * 30
+        score += era_score * ValidationConstants.ERA_COMPATIBILITY_WEIGHT
         
-        if era_score < 0.5:
+        if era_score < ValidationConstants.ERA_COMPATIBILITY_LOW_THRESHOLD:
             conflicts.append(f"事件与{era_rules.era}时代背景不符")
         
-        # 2. 人物属性一致性检查 (±20)
+        # 2. 人物属性一致性检查
         character_score = self._check_character_consistency(event, state)
-        score += character_score * 20
+        score += character_score * ValidationConstants.CHARACTER_CONSISTENCY_WEIGHT
         
-        if character_score < 0.6:
+        if character_score < ValidationConstants.CHARACTER_CONSISTENCY_LOW_THRESHOLD:
             warnings.append("事件与角色当前状态存在较大偏差")
         
-        # 3. 历史记忆连贯性检查 (±15)
+        # 3. 历史记忆连贯性检查
         memory_score = self._check_memory_coherence(event, state)
-        score -= (1 - memory_score) * 15
+        score -= (1 - memory_score) * ValidationConstants.MEMORY_COHERENCE_WEIGHT
         
-        if memory_score < 0.7:
+        if memory_score < ValidationConstants.MEMORY_COHERENCE_THRESHOLD:
             warnings.append("事件与近期记忆存在冲突")
         
-        # 4. 宏观事件影响检查 (±15)
+        # 4. 宏观事件影响检查
         macro_score = self._check_macro_influence(event, era_rules)
-        score += macro_score * 15
+        score += macro_score * ValidationConstants.MACRO_INFLUENCE_WEIGHT
         
-        # 5. 基础常识检查 (±10)
+        # 5. 基础常识检查
         common_sense_score = self._check_common_sense(event)
-        score += common_sense_score * 10
+        score += common_sense_score * ValidationConstants.COMMON_SENSE_WEIGHT
         
-        if common_sense_score < 0.8:
+        if common_sense_score < ValidationConstants.COMMON_SENSE_THRESHOLD:
             conflicts.append("事件存在基本常识性错误")
         
-        # 确保分数在0-100范围内
-        score = max(0, min(100, score))
+        # 确保分数在有效范围内
+        score = max(ValidationConstants.MIN_SCORE, min(ValidationConstants.MAX_SCORE, score))
         
         # 根据分数提供建议
-        if score >= 80:
+        if score >= ValidationConstants.HIGH_CREDIBILITY_THRESHOLD:
             suggestions.append("事件高度可信，可直接采用")
-        elif score >= 60:
+        elif score >= ValidationConstants.MEDIUM_CREDIBILITY_THRESHOLD:
             suggestions.append("事件基本可信，建议微调")
         else:
             suggestions.append("事件可信度较低，建议重新生成")

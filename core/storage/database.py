@@ -166,6 +166,11 @@ class DatabaseManager:
         for row in rows:
             # 新表结构: id, name, birth_date, birth_place, gender, family_background, 
             # initial_traits, starting_age, era, difficulty, created_at, updated_at
+            try:
+                initial_personality = json.loads(row[6]) if len(row) > 6 and row[6] else {}
+            except (json.JSONDecodeError, TypeError):
+                initial_personality = {}
+            
             profile = LifeProfile(
                 id=row[0], 
                 name=row[1], 
@@ -173,7 +178,7 @@ class DatabaseManager:
                 birthLocation=row[3],
                 gender=row[4], 
                 familyBackground=row[5] if len(row) > 5 else 'middle',
-                initialPersonality=json.loads(row[6]) if len(row) > 6 else {}, 
+                initialPersonality=initial_personality, 
                 createdAt=row[10] if len(row) > 10 else row[8],
                 startingAge=row[7] if len(row) > 7 else 0.0
             )
@@ -195,6 +200,11 @@ class DatabaseManager:
         if row:
             # 新表结构: id, name, birth_date, birth_place, gender, family_background, 
             # initial_traits, starting_age, era, difficulty, created_at, updated_at
+            try:
+                initial_personality = json.loads(row[6]) if len(row) > 6 and row[6] else {}
+            except (json.JSONDecodeError, TypeError):
+                initial_personality = {}
+            
             return LifeProfile(
                 id=row[0], 
                 name=row[1], 
@@ -202,7 +212,7 @@ class DatabaseManager:
                 birthLocation=row[3],
                 gender=row[4], 
                 familyBackground=row[5] if len(row) > 5 else 'middle',
-                initialPersonality=json.loads(row[6]) if len(row) > 6 else {}, 
+                initialPersonality=initial_personality, 
                 createdAt=row[10] if len(row) > 10 else row[8],
                 startingAge=row[7] if len(row) > 7 else 0.0
             )
